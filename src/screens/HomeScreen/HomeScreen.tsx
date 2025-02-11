@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   Image,
   Pressable,
@@ -7,6 +7,7 @@ import {
   View,
   FlatList,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {useNavigation} from '@react-navigation/native';
@@ -31,51 +32,74 @@ import auth from '@react-native-firebase/auth';
 
 const HomeScreen = () => {
   const [chats, setChats] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
   const user = useSelector((state: RootState) => state.userDetails);
   const dispatch = useDispatch();
   const navigation = useNavigation();
   const firestore = getFirestore();
 
-  useEffect(() => {
+  const fetchChats = async () => {
     if (!user?.user?.uid) return;
+    setRefreshing(true);
 
-    const q = query(
-      collection(firestore, 'GroupChats'),
-      where('members', 'array-contains', user.user.uid),
-    );
+    try {
+      const q = query(
+        collection(firestore, 'GroupChats'),
+        where('members', 'array-contains', user.user.uid),
+      );
 
-    const unsubscribe = onSnapshot(q, async snapshot => {
+      const snapshot = await getDocs(q);
+
       if (snapshot.empty) {
         console.log('No chats found');
-        setChats([]); // Ensure state updates properly
+        setChats([]);
+        setRefreshing(false);
         return;
       }
 
       const chatData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
-      // Fetch last messages for each chat
       const updatedChats = await Promise.all(
         chatData.map(async chat => {
-          const messagesQuery = query(
-            collection(firestore, `GroupChats/${chat.id}/Messages`),
-            orderBy('createdAt', 'desc'),
-            limit(1),
-          );
+          try {
+            const messagesQuery = query(
+              collection(firestore, `GroupChats/${chat.id}/Messages`),
+              orderBy('createdAt', 'desc'),
+              limit(1),
+            );
 
-          const messageSnapshot = await getDocs(messagesQuery);
-          const lastMessage = messageSnapshot.docs.length
-            ? messageSnapshot.docs[0].data()
-            : null;
+            const messageSnapshot = await getDocs(messagesQuery);
+            const lastMessage =
+              messageSnapshot.docs.length > 0
+                ? messageSnapshot.docs[0].data()
+                : null;
 
-          return {...chat, lastMessage};
+            return {...chat, lastMessage};
+          } catch (error) {
+            console.error(
+              `Error fetching messages for chat ${chat.id}:`,
+              error,
+            );
+            return {...chat, lastMessage: null};
+          }
         }),
       );
 
       setChats(updatedChats);
-    });
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchChats();
   }, [user]);
+
+  const onRefresh = useCallback(() => {
+    fetchChats();
+  }, []);
 
   const signOut = async () => {
     try {
@@ -116,19 +140,25 @@ const HomeScreen = () => {
       <FlatList
         data={chats}
         keyExtractor={item => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         renderItem={({item}) => (
           <TouchableOpacity
             style={[
               styles.chatItem,
-              item.lastMessage?.seenBy?.includes(user.user.uid)
-                ? {}
-                : {backgroundColor: '#d1e7ff'},
+              {backgroundColor: item.lastMessage ? '#f0f8ff' : '#ffebcd'},
             ]}
             onPress={() => openChat(item)}>
             <Image source={images?.chatIcon} style={styles.chatIcon} />
             <View>
               <Text style={styles.chatText}>{item.name || 'Group Chat'}</Text>
-              <Text style={styles.lastMessage}>
+              <Text
+                style={[
+                  styles.lastMessage,
+                  !item.lastMessage?.seenBy?.includes(user.user.uid) &&
+                    styles.unreadText,
+                ]}>
                 {item.lastMessage ? item.lastMessage.text : 'No messages yet'}
               </Text>
             </View>
@@ -192,17 +222,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginVertical: 5,
     marginHorizontal: 10,
-    borderRadius: 10,
-    elevation: 3, // Adds shadow for Android
+    borderRadius: 15,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 5,
   },
   chatIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     marginRight: 15,
   },
   chatText: {
@@ -213,6 +243,11 @@ const styles = StyleSheet.create({
   lastMessage: {
     fontSize: 14,
     color: '#777',
+  },
+  unreadText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#007bff',
   },
 
   /* No Chats Found */
@@ -230,14 +265,14 @@ const styles = StyleSheet.create({
     bottom: width / 15,
     backgroundColor: colors?.primaryColor,
     borderRadius: width / 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
+    elevation: 6,
   },
   FloatText: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     color: colors?.white,
   },

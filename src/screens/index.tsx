@@ -8,6 +8,7 @@ export {default as VerifyOtp} from './VerifyOtp/VerifyOtp';
 export {default as ResetPass} from './ResetPass/ResetPass';
 export {default as SuccessfullyReset} from './SuccessfullyReset/SuccessfullyReset';
 export {default as ComingSoonScreen} from './ComingSoon/ComingSoonScreen';
+export {default as PasswordScreen} from './PasswordScreen/PasswordScreen';
 
 //App Routes
 export {default as HomeScreen} from './HomeScreen/HomeScreen';
@@ -18,3 +19,4 @@ export {default as PopUp} from './PopUp/PopUp';
 export {default as ChatScreen} from './ChatScreen/ChatScreen';
 export {default as NewChatRoom} from './NewChatRoom/NewChatRoom';
 export {default as CreateGroupChat} from './CreateGroupChat/CreateGroupChat';
+export {default as Wallpaper} from './WallpaperScreen/WallpaperScreen';

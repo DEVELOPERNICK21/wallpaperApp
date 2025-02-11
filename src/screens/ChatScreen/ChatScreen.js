@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import {
   getFirestore,
@@ -29,6 +30,10 @@ const ChatScreen = ({route}) => {
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState('');
+
+  const typingAnimation = useRef(new Animated.Value(0)).current; // Animation ref
 
   useEffect(() => {
     // Fetch Group Name
@@ -56,7 +61,23 @@ const ChatScreen = ({route}) => {
       markMessagesAsSeen(newMessages);
     });
 
-    return () => unsubscribe();
+    // Listen for Typing Status
+    const typingRef = doc(firestore, 'GroupChats', chatId);
+    const unsubscribeTyping = onSnapshot(typingRef, snapshot => {
+      const data = snapshot.data();
+      if (data?.typingUser && data.typingUser !== currentUser.displayName) {
+        setTypingUser(data.typingUser);
+        setIsTyping(true);
+        fadeInTyping();
+      } else {
+        fadeOutTyping();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeTyping();
+    };
   }, [chatId]);
 
   // Function to mark messages as seen
@@ -75,6 +96,15 @@ const ChatScreen = ({route}) => {
     }
   };
 
+  // Handle Typing
+  const handleTyping = async text => {
+    setMessageText(text);
+    const typingRef = doc(firestore, 'GroupChats', chatId);
+    await updateDoc(typingRef, {
+      typingUser: text ? currentUser.displayName : '',
+    });
+  };
+
   // Send Message
   const sendMessage = async () => {
     if (!messageText.trim()) return;
@@ -86,7 +116,26 @@ const ChatScreen = ({route}) => {
       createdAt: new Date(),
       seenBy: [currentUser.uid], // Mark sender as seen by default
     });
+
     setMessageText('');
+    await updateDoc(doc(firestore, 'GroupChats', chatId), {typingUser: ''});
+  };
+
+  // Animations
+  const fadeInTyping = () => {
+    Animated.timing(typingAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const fadeOutTyping = () => {
+    Animated.timing(typingAnimation, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setIsTyping(false));
   };
 
   return (
@@ -125,12 +174,20 @@ const ChatScreen = ({route}) => {
         contentContainerStyle={{paddingBottom: 80}} // Space for input field
       />
 
+      {/* Typing Indicator (Animated) */}
+      {isTyping && (
+        <Animated.View
+          style={[styles.typingIndicator, {opacity: typingAnimation}]}>
+          <Text style={styles.typingText}>{typingUser} is typing...</Text>
+        </Animated.View>
+      )}
+
       {/* Input Field */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={messageText}
-          onChangeText={setMessageText}
+          onChangeText={handleTyping}
           placeholder="Type a message..."
           placeholderTextColor="#999"
         />
@@ -193,35 +250,30 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
 
+  /* Typing Indicator */
+  typingIndicator: {
+    paddingVertical: 5,
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  typingText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#777',
+  },
+
   /* Input Field Styling */
   inputContainer: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    right: 10,
     flexDirection: 'row',
     backgroundColor: '#f0f0f0',
     borderRadius: 25,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    padding: 10,
+    margin: 10,
     alignItems: 'center',
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    paddingHorizontal: 10,
-  },
-  sendButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  sendButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
+  input: {flex: 1, fontSize: 16, color: '#333'},
+  sendButton: {backgroundColor: '#007bff', padding: 10, borderRadius: 20},
+  sendButtonText: {color: 'white', fontWeight: 'bold'},
 });
 
 export default ChatScreen;

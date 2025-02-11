@@ -24,6 +24,8 @@ type ScreenConstantsType = {
   CHAT_SCREEN: string;
   NEW_CHAT_ROOM_SCREEN: string;
   CREATE_GROUP_CHAT: string;
+  PASSWORD_SCREEN: string;
+  WALLPAPER_SCREEN: string;
   // add other screen constants as needed...
 };
 
@@ -52,6 +54,8 @@ const ScreenConstants: ScreenConstantsType = {
   CHAT_SCREEN: 'CHAT_SCREEN',
   NEW_CHAT_ROOM_SCREEN: 'NEW_CHAT_ROOM_SCREEN',
   CREATE_GROUP_CHAT: 'CREATE_GROUP_CHAT',
+  PASSWORD_SCREEN: 'PASSWORD_SCREEN',
+  WALLPAPER_SCREEN: 'WALLPAPER_SCREEN',
 };
 
 export default ScreenConstants;

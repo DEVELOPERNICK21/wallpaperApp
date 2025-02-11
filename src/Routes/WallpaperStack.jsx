@@ -7,20 +7,11 @@ import {Easing, SafeAreaView} from 'react-native';
 import ScreenConstants from './ScreenConstants';
 import {colors} from '../assets/color';
 import fonts from '../assets/fonts';
-import {
-  ChatScreen,
-  CreateGroupChat,
-  HomeScreen,
-  NewChatRoom,
-  PasswordScreen,
-  ScannerScreen,
-} from '../screens';
-import MyStatusBar from '../component/StatusBar';
-import UserBottomTab from './UserBottomTabNavigator';
+import {Wallpaper} from '../screens';
 
 const Stack = createStackNavigator();
 
-const AppRoutes = () => {
+const WallpaperStack = () => {
   const config = {
     animation: 'timing',
     config: {
@@ -57,28 +48,12 @@ const AppRoutes = () => {
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         }}>
         <Stack.Screen
-          name={ScreenConstants?.HOME_USER_SCREEN}
-          component={HomeScreen}
-          options={{headerShown: false, title: ''}}
-        />
-
-        <Stack.Screen
-          name={ScreenConstants?.CHAT_SCREEN}
-          component={ChatScreen}
-          options={{headerShown: false, title: ''}}
-        />
-        <Stack.Screen
-          name={ScreenConstants?.NEW_CHAT_ROOM_SCREEN}
-          component={NewChatRoom}
-          options={{headerShown: false, title: ''}}
-        />
-        <Stack.Screen
-          name={ScreenConstants?.CREATE_GROUP_CHAT}
-          component={CreateGroupChat}
+          name={ScreenConstants?.WALLPAPER_SCREEN}
+          component={Wallpaper}
           options={{headerShown: false, title: ''}}
         />
       </Stack.Navigator>
     </SafeAreaView>
   );
 };
-export default AppRoutes;
+export default WallpaperStack;
