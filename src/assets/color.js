@@ -1,7 +1,7 @@
 export const colors = {
-  primaryColor: '#1A73E8',
-  primaryColorOne: '#DF8239',
-  secondary: '#FFC107',
+  primaryColor: '#53d769',
+  primaryColorOne: '#53d769',
+  secondary: '#FFA500',
   accent: {
     light: '#E8F0FE', // Light accent
     teal: '#1ABC9C', // Secondary complement

@@ -12,6 +12,7 @@ import {
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import {useNavigation} from '@react-navigation/native';
+import {colors} from '../../assets/color';
 
 const CreateGroupChat = () => {
   const [users, setUsers] = useState([]);
@@ -91,7 +92,7 @@ const CreateGroupChat = () => {
               selectedUsers.includes(item.id) && styles.selectedUser,
             ]}
             onPress={() => toggleUserSelection(item.id)}>
-            <Text style={{color: 'red'}}>{item.name}</Text>
+            <Text style={{color: colors?.primaryColor}}>{item.name}</Text>
           </TouchableOpacity>
         )}
       />
@@ -127,10 +128,15 @@ const CreateGroupChat = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, padding: 20},
-  header: {fontSize: 20, fontWeight: 'bold', marginBottom: 10},
+  container: {flex: 1, padding: 20, backgroundColor: '#000'},
+  header: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: colors?.white,
+  },
   userItem: {padding: 10, borderBottomWidth: 1},
-  selectedUser: {backgroundColor: '#cceeff'},
+  selectedUser: {backgroundColor: colors?.greyColor},
   createButton: {
     padding: 10,
     backgroundColor: '#007bff',

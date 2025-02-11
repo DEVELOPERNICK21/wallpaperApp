@@ -21,6 +21,7 @@ import {
   getDoc,
 } from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import {colors} from '../../assets/color';
 
 const ChatScreen = ({route}) => {
   const {chatId} = route.params;
@@ -200,13 +201,13 @@ const ChatScreen = ({route}) => {
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#fff'},
+  container: {flex: 1, backgroundColor: '#000'},
 
   /* Group Name Header */
   header: {
     paddingVertical: 15,
     alignItems: 'center',
-    backgroundColor: '#007bff',
+    backgroundColor: colors?.primaryColor,
     elevation: 3,
   },
   groupName: {
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   },
   sentMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#007bff',
+    backgroundColor: colors?.primaryColor,
     borderTopRightRadius: 0,
   },
   receivedMessage: {
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#007bff',
+    color: colors?.primaryColor,
     marginBottom: 3,
   },
   seenByText: {
@@ -272,7 +273,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   input: {flex: 1, fontSize: 16, color: '#333'},
-  sendButton: {backgroundColor: '#007bff', padding: 10, borderRadius: 20},
+  sendButton: {
+    backgroundColor: colors?.primaryColor,
+    padding: 10,
+    borderRadius: 20,
+  },
   sendButtonText: {color: 'white', fontWeight: 'bold'},
 });
 

@@ -106,7 +106,10 @@ const HomeScreen = () => {
       await auth().signOut();
       dispatch(setLogOut());
       await removeUserData();
-      navigation.navigate(ScreenConstants?.LOGIN_SCREEN);
+      navigation.reset({
+        index: 0,
+        routes: [{name: ScreenConstants.LOGIN_SCREEN}],
+      });
     } catch (error) {
       console.error('Error signing out: ', error);
     }
@@ -156,7 +159,8 @@ const HomeScreen = () => {
               <Text
                 style={[
                   styles.lastMessage,
-                  !item.lastMessage?.seenBy?.includes(user.user.uid) &&
+                  user?.user?.uid &&
+                    !item.lastMessage?.seenBy?.includes(user.user.uid) &&
                     styles.unreadText,
                 ]}>
                 {item.lastMessage ? item.lastMessage.text : 'No messages yet'}
@@ -180,7 +184,7 @@ const HomeScreen = () => {
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#fff'},
+  container: {flex: 1, backgroundColor: '#000'},
 
   /* Profile Header */
   ProfileArea: {

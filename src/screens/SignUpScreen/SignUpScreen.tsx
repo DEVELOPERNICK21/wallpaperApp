@@ -37,6 +37,8 @@ import {
 import {storeUserDetails} from '../../reduxrf/actions/user.ts';
 import {showMessage} from 'react-native-flash-message';
 import {ShowSuccessMessage} from '../../component/FlashMessage/FlashMessage.tsx';
+import {setLogOut} from '../../redux/actions/users.js';
+import {removeUserData} from '../../utils/asynstorage.js';
 
 const SignUpScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
@@ -60,6 +62,8 @@ const SignUpScreen: React.FC = () => {
     }
 
     try {
+      setLoading(true); // Show loading spinner
+
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -67,32 +71,42 @@ const SignUpScreen: React.FC = () => {
       );
       const user = userCredential.user;
 
-      await updateProfile(user, {
-        // Use updateProfile directly
-        displayName: name,
-      });
+      // Update user profile
+      await updateProfile(user, {displayName: name});
 
-      console.log(user, 'CHECK User');
+      // Save user data in Firestore
+      const usersCollection = collection(firestore, 'Users');
+      const userDoc = doc(usersCollection, user.uid);
+      await setDoc(userDoc, {name, email});
 
-      // dispatch(storeUserDetails(user));
-      navigation?.navigate(ScreenConstants?.LOGIN_SCREEN);
-      ShowSuccessMessage('Please Login Now!');
+      // ✅ Sign out user after successful registration
+      await auth().signOut();
+      try {
+        dispatch(setLogOut());
+        await removeUserData();
+        navigation.reset({
+          index: 0,
+          routes: [{name: ScreenConstants.LOGIN_SCREEN}],
+        });
+      } catch (error) {
+        console.error('Error signing out: ', error);
+      }
 
-      // Use Firestore functions for better clarity
-      const usersCollection = collection(firestore, 'Users'); // Get the 'Users' collection
-      const userDoc = doc(usersCollection, user.uid); // Create a document reference
-      await setDoc(userDoc, {
-        // Set the document data
-        name,
-        email,
+      setLoading(false); // Hide spinner
+      ShowSuccessMessage('Account created! Please log in.');
+
+      // ✅ Reset navigation stack to LOGIN_SCREEN
+      navigation.reset({
+        index: 0,
+        routes: [{name: ScreenConstants.LOGIN_SCREEN}],
       });
 
       return {success: true};
     } catch (error) {
       console.error('Signup Error:', error);
+      setLoading(false);
 
-      let errorMessage = error.message;
-
+      let errorMessage = 'Something went wrong. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'That email address is already in use!';
       } else if (error.code === 'auth/invalid-email') {
