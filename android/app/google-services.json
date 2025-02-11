@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "686723359931",
+    "project_id": "wallpemsg",
+    "storage_bucket": "wallpemsg.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:686723359931:android:891568fc1da7f761e7759e",
+        "android_client_info": {
+          "package_name": "com.wallpe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCovFsCQM3amnQIRRkIG7FBx3D6_y9Vwes"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

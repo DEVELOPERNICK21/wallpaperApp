@@ -1,0 +1,244 @@
+import React, {useEffect, useState} from 'react';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  TouchableOpacity,
+} from 'react-native';
+import {useDispatch, useSelector} from 'react-redux';
+import {useNavigation} from '@react-navigation/native';
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  orderBy,
+  limit,
+  getDocs,
+} from '@react-native-firebase/firestore';
+import {colors} from '../../assets/color';
+import {height, width} from '../../assets/string';
+import ScreenConstants from '../../Routes/ScreenConstants';
+import images from '../../assets/images';
+import {setLogOut} from '../../redux/actions/users';
+import {removeUserData} from '../../utils/asynstorage';
+import {RootState} from '../../reduxrf/reducers';
+import auth from '@react-native-firebase/auth';
+
+const HomeScreen = () => {
+  const [chats, setChats] = useState([]);
+  const user = useSelector((state: RootState) => state.userDetails);
+  const dispatch = useDispatch();
+  const navigation = useNavigation();
+  const firestore = getFirestore();
+
+  useEffect(() => {
+    if (!user?.user?.uid) return;
+
+    const q = query(
+      collection(firestore, 'GroupChats'),
+      where('members', 'array-contains', user.user.uid),
+    );
+
+    const unsubscribe = onSnapshot(q, async snapshot => {
+      if (snapshot.empty) {
+        console.log('No chats found');
+        setChats([]); // Ensure state updates properly
+        return;
+      }
+
+      const chatData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+
+      // Fetch last messages for each chat
+      const updatedChats = await Promise.all(
+        chatData.map(async chat => {
+          const messagesQuery = query(
+            collection(firestore, `GroupChats/${chat.id}/Messages`),
+            orderBy('createdAt', 'desc'),
+            limit(1),
+          );
+
+          const messageSnapshot = await getDocs(messagesQuery);
+          const lastMessage = messageSnapshot.docs.length
+            ? messageSnapshot.docs[0].data()
+            : null;
+
+          return {...chat, lastMessage};
+        }),
+      );
+
+      setChats(updatedChats);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const signOut = async () => {
+    try {
+      await auth().signOut();
+      dispatch(setLogOut());
+      await removeUserData();
+      navigation.navigate(ScreenConstants?.LOGIN_SCREEN);
+    } catch (error) {
+      console.error('Error signing out: ', error);
+    }
+  };
+
+  const openChat = chat => {
+    if (!chat || !chat.id) {
+      console.error('Chat data is undefined or invalid', chat);
+      return;
+    }
+    navigation.navigate(ScreenConstants.CHAT_SCREEN, {chatId: chat.id});
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.ProfileArea}>
+        <View style={styles.profileArea}>
+          <Image source={images?.userDummy} style={styles.imageStyling} />
+        </View>
+        <Text style={styles.uperText}>{user?.user?.displayName || 'User'}</Text>
+        <Pressable onPress={signOut}>
+          <Text style={styles.uperText}>Sign Out</Text>
+        </Pressable>
+      </View>
+
+      {/* Chat List Title */}
+      <Text style={styles.header}>Your Chats</Text>
+
+      {/* Chat List */}
+      <FlatList
+        data={chats}
+        keyExtractor={item => item.id}
+        renderItem={({item}) => (
+          <TouchableOpacity
+            style={[
+              styles.chatItem,
+              item.lastMessage?.seenBy?.includes(user.user.uid)
+                ? {}
+                : {backgroundColor: '#d1e7ff'},
+            ]}
+            onPress={() => openChat(item)}>
+            <Image source={images?.chatIcon} style={styles.chatIcon} />
+            <View>
+              <Text style={styles.chatText}>{item.name || 'Group Chat'}</Text>
+              <Text style={styles.lastMessage}>
+                {item.lastMessage ? item.lastMessage.text : 'No messages yet'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={<Text style={styles.noChats}>No chats found</Text>}
+      />
+
+      {/* Floating Button */}
+      <Pressable
+        style={styles.FloatButton}
+        onPress={() => navigation.navigate(ScreenConstants?.CREATE_GROUP_CHAT)}>
+        <Text style={styles.FloatText}>+</Text>
+      </Pressable>
+    </View>
+  );
+};
+
+export default HomeScreen;
+
+const styles = StyleSheet.create({
+  container: {flex: 1, backgroundColor: '#fff'},
+
+  /* Profile Header */
+  ProfileArea: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: colors?.primaryColor,
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+  },
+  profileArea: {
+    height: height / 15,
+    width: height / 15,
+    backgroundColor: 'green',
+    borderRadius: width,
+    overflow: 'hidden',
+  },
+  imageStyling: {
+    height: '100%',
+    width: '100%',
+  },
+  uperText: {
+    fontSize: 18,
+    color: colors?.white,
+  },
+
+  /* Chat List */
+  header: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginVertical: 10,
+    paddingHorizontal: 15,
+    color: '#333',
+  },
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    marginVertical: 5,
+    marginHorizontal: 10,
+    borderRadius: 10,
+    elevation: 3, // Adds shadow for Android
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
+  chatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 15,
+  },
+  chatText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  lastMessage: {
+    fontSize: 14,
+    color: '#777',
+  },
+
+  /* No Chats Found */
+  noChats: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#777',
+    marginTop: 20,
+  },
+
+  /* Floating Button */
+  FloatButton: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: width / 15,
+    backgroundColor: colors?.primaryColor,
+    borderRadius: width / 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+  },
+  FloatText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors?.white,
+  },
+});
