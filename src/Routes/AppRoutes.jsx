@@ -38,47 +38,45 @@ const AppRoutes = () => {
   };
 
   return (
-    <SafeAreaView style={{flex: 1}}>
-      <Stack.Navigator
-        screenOptions={{
-          color: colors?.primaryColor,
-          gestureEnabled: false,
-          gestureDirection: 'horizontal',
-          transitionSpec: {
-            open: config,
-            close: closeConfig,
-          },
-          headerStyle: {
-            backgroundColor: colors?.primaryColor,
-          },
-          headerTitleAlign: 'center',
-          headerTintColor: 'white',
-          headerTitleStyle: {fontFamily: fonts?.PoppinsSemiBold},
-          cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-        }}>
-        <Stack.Screen
-          name={ScreenConstants?.HOME_USER_SCREEN}
-          component={HomeScreen}
-          options={{headerShown: false, title: ''}}
-        />
+    <Stack.Navigator
+      screenOptions={{
+        color: colors?.primaryColor,
+        // gestureEnabled: false,
+        gestureDirection: 'horizontal',
+        transitionSpec: {
+          open: config,
+          close: closeConfig,
+        },
+        headerStyle: {
+          backgroundColor: colors?.primaryColor,
+        },
+        headerTitleAlign: 'center',
+        headerTintColor: 'white',
+        headerTitleStyle: {fontFamily: fonts?.PoppinsSemiBold},
+        cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+      }}>
+      <Stack.Screen
+        name={ScreenConstants?.HOME_USER_SCREEN}
+        component={HomeScreen}
+        options={{headerShown: false, title: ''}}
+      />
 
-        <Stack.Screen
-          name={ScreenConstants?.CHAT_SCREEN}
-          component={ChatScreen}
-          options={{headerShown: false, title: ''}}
-        />
-        <Stack.Screen
-          name={ScreenConstants?.NEW_CHAT_ROOM_SCREEN}
-          component={NewChatRoom}
-          options={{headerShown: false, title: ''}}
-        />
-        <Stack.Screen
-          name={ScreenConstants?.CREATE_GROUP_CHAT}
-          component={CreateGroupChat}
-          options={{headerShown: false, title: ''}}
-        />
-      </Stack.Navigator>
-    </SafeAreaView>
+      <Stack.Screen
+        name={ScreenConstants?.CHAT_SCREEN}
+        component={ChatScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.NEW_CHAT_ROOM_SCREEN}
+        component={NewChatRoom}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.CREATE_GROUP_CHAT}
+        component={CreateGroupChat}
+        options={{headerShown: false, title: ''}}
+      />
+    </Stack.Navigator>
   );
 };
 export default AppRoutes;

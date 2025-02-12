@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
-import {useNavigation} from '@react-navigation/native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import {
   getFirestore,
   collection,
@@ -29,6 +29,8 @@ import {setLogOut} from '../../redux/actions/users';
 import {removeUserData} from '../../utils/asynstorage';
 import {RootState} from '../../reduxrf/reducers';
 import auth from '@react-native-firebase/auth';
+import MyStatusBar from '../../component/StatusBar';
+import {UserFace_Icon} from '../../assets/icons';
 
 const HomeScreen = () => {
   const [chats, setChats] = useState([]);
@@ -93,9 +95,11 @@ const HomeScreen = () => {
     }
   };
 
-  useEffect(() => {
-    fetchChats();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchChats();
+    }, [user]),
+  );
 
   const onRefresh = useCallback(() => {
     fetchChats();
@@ -120,19 +124,32 @@ const HomeScreen = () => {
       console.error('Chat data is undefined or invalid', chat);
       return;
     }
-    navigation.navigate(ScreenConstants.CHAT_SCREEN, {chatId: chat.id});
+    navigation.navigate(ScreenConstants.CHAT_SCREEN, {
+      chatId: chat.id,
+      groupNameed: chat.name || 'Group Chat',
+    });
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <View style={[styles.homeWrapper]}>
+      <MyStatusBar
+        translucent={true}
+        backgroundColor={colors?.primaryColor}
+        barStyle="dark-content"
+      />
+
       <View style={styles.ProfileArea}>
-        <View style={styles.profileArea}>
-          <Image source={images?.userDummy} style={styles.imageStyling} />
+        <View style={styles?.firstArea}>
+          {/* <View style={styles.profileArea}> */}
+          {/* <Image source={images?.userDummy} style={styles.imageStyling} /> */}
+          <UserFace_Icon height={height / 7} width={width / 4} />
+          {/* </View> */}
+          <Text style={styles.uperText}>
+            {user?.user?.displayName || 'User'}
+          </Text>
         </View>
-        <Text style={styles.uperText}>{user?.user?.displayName || 'User'}</Text>
         <Pressable onPress={signOut}>
-          <Text style={styles.uperText}>Sign Out</Text>
+          <Text style={styles.uperTextNew}>Sign Out</Text>
         </Pressable>
       </View>
 
@@ -150,10 +167,16 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={[
               styles.chatItem,
-              {backgroundColor: item.lastMessage ? '#f0f8ff' : '#ffebcd'},
+              {backgroundColor: item.lastMessage ? '#000' : '#1A1A1A'},
             ]}
             onPress={() => openChat(item)}>
-            <Image source={images?.chatIcon} style={styles.chatIcon} />
+            {/* Circular Group Name Icon */}
+            <View style={styles.chatCircle}>
+              <Text style={styles.chatInitial}>
+                {item.name ? item.name.charAt(0).toUpperCase() : '?'}
+              </Text>
+            </View>
+
             <View>
               <Text style={styles.chatText}>{item.name || 'Group Chat'}</Text>
               <Text
@@ -184,7 +207,10 @@ const HomeScreen = () => {
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#000'},
+  homeWrapper: {
+    height: height,
+    backgroundColor: '#000',
+  },
 
   /* Profile Header */
   ProfileArea: {
@@ -194,21 +220,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     paddingHorizontal: 15,
+    height: height / 7,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   profileArea: {
     height: height / 15,
-    width: height / 15,
-    backgroundColor: 'green',
+    width: '20%',
+    // backgroundColor: 'green',
     borderRadius: width,
     overflow: 'hidden',
+    justifyContent: 'center',
+    // alignItems: 'center',
+  },
+  firstArea: {
+    width: '75%',
+    flexDirection: 'row',
+    // justifyContent: 'center',
+    alignItems: 'center',
   },
   imageStyling: {
-    height: '100%',
-    width: '100%',
+    height: height / 20,
+    width: height / 20,
   },
   uperText: {
     fontSize: 18,
-    color: colors?.white,
+    color: colors?.black,
+    width: '45%',
+    textTransform: 'uppercase',
   },
 
   /* Chat List */
@@ -219,18 +258,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     color: '#333',
   },
+  chatCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.primaryColor,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  chatInitial: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 15,
     paddingHorizontal: 15,
     marginVertical: 5,
     marginHorizontal: 10,
     borderRadius: 15,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: colors?.greyColor,
     shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 5,
   },
   chatIcon: {
@@ -242,11 +295,11 @@ const styles = StyleSheet.create({
   chatText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors?.white,
   },
   lastMessage: {
     fontSize: 14,
-    color: '#777',
+    color: colors?.greyColor,
   },
   unreadText: {
     fontSize: 14,
@@ -268,7 +321,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     bottom: width / 15,
     backgroundColor: colors?.primaryColor,
-    borderRadius: width / 8,
+    borderRadius: width,
     paddingVertical: 15,
     paddingHorizontal: 25,
     justifyContent: 'center',

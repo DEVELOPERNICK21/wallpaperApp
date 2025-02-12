@@ -16,30 +16,26 @@ export const OnBoardingData: OnBoardingItem[] = [
   {
     id: 1,
     Icon: ColorfulQR_Icon,
-    Heading: 'Access your pay slips anytime',
-    SubHeading:
-      'Download and review your monthly salary details with just a click.',
+    Heading: ' Stay Connected, Anytime, Anywhere',
+    SubHeading: 'Enjoy seamless and secure messaging',
   },
   {
     id: 2,
     Icon: SecondOn_Icon,
-    Heading: 'Apply for leaves on the go',
-    SubHeading:
-      'Submit leave requests, view balances, and track approvals instantly.',
+    Heading: 'Your Conversations, Your Way',
+    SubHeading: 'Organize chats with an intuitive interface',
   },
   {
     id: 3,
 
     Icon: FirstOn_Icon,
-    Heading: 'Mark your attendance with a tap',
-    SubHeading:
-      'View, manage, and track your work hours and attendance with ease.',
+    Heading: 'Secure & Private Messaging',
+    SubHeading: 'Control your online presence and privacy settings',
   },
   {
     id: 4,
     Icon: ThirdOn_Icon,
-    Heading: 'You’re All Set!',
-    SubHeading:
-      'Log in to take charge of your HR procedures and learn more about edsom fintech Pvt.ltd.',
+    Heading: 'More Than Just Messages',
+    SubHeading: 'Express yourself with emojis and stickers',
   },
 ];

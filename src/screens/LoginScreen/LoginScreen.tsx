@@ -100,11 +100,9 @@ const LoginScreen: React.FC = () => {
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <EnterLogin_Icon height={height / 2.5} width={width / 1.5} />
-          <Text style={styles?.titleStyle}>Welcome to SmartStaff</Text>
-          <Text style={styles?.subTitleStyle}>
-            Streamline Your Workforce Management
-          </Text>
-          <CustomTextInput inputData={userId} />
+          <Text style={styles?.titleStyle}>Welcome to Somewhere</Text>
+          <Text style={styles?.subTitleStyle}>Streamline Your Conection</Text>
+          <CustomTextInput inputData={userId} keyboardType="email-address" />
           <CustomTextInput inputData={passField} />
           <Pressable
             style={styles?.forgotStyle}

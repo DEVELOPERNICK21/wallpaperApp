@@ -13,6 +13,9 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import {useNavigation} from '@react-navigation/native';
 import {colors} from '../../assets/color';
+import MyStatusBar from '../../component/StatusBar';
+import fonts from '../../assets/fonts';
+import {width} from '../../assets/string';
 
 const CreateGroupChat = () => {
   const [users, setUsers] = useState([]);
@@ -79,6 +82,11 @@ const CreateGroupChat = () => {
 
   return (
     <View style={styles.container}>
+      <MyStatusBar
+        translucent={true}
+        backgroundColor={colors?.primaryColor}
+        barStyle="dark-content"
+      />
       <Text style={styles.header}>Create Group Chat</Text>
 
       {/* List of users */}
@@ -92,7 +100,7 @@ const CreateGroupChat = () => {
               selectedUsers.includes(item.id) && styles.selectedUser,
             ]}
             onPress={() => toggleUserSelection(item.id)}>
-            <Text style={{color: colors?.primaryColor}}>{item.name}</Text>
+            <Text style={styles?.userNamme}>{item.name}</Text>
           </TouchableOpacity>
         )}
       />
@@ -128,20 +136,32 @@ const CreateGroupChat = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, padding: 20, backgroundColor: '#000'},
+  container: {flex: 1, backgroundColor: '#000'},
   header: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
     color: colors?.white,
+    marginVertical: 20,
+    marginHorizontal: 10,
   },
   userItem: {padding: 10, borderBottomWidth: 1},
-  selectedUser: {backgroundColor: colors?.greyColor},
+  userNamme: {
+    color: colors?.primaryColor,
+    textTransform: 'uppercase',
+    fontFamily: fonts?.PoppinsSemiBold,
+    fontSize: 18,
+  },
+  selectedUser: {backgroundColor: colors?.greyColor, borderRadius: 20},
   createButton: {
     padding: 10,
-    backgroundColor: '#007bff',
+    backgroundColor: colors?.primaryColor,
     alignItems: 'center',
     marginTop: 10,
+    padding: 20,
+    borderRadius: 10,
+    bottom: width / 10,
+    marginHorizontal: 20,
   },
   createButtonText: {color: 'white', fontWeight: 'bold'},
   modalContainer: {

@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   Animated,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {
   getFirestore,
@@ -19,12 +20,14 @@ import {
   updateDoc,
   arrayUnion,
   getDoc,
+  serverTimestamp,
 } from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import {colors} from '../../assets/color';
+import MyStatusBar from '../../component/StatusBar';
 
 const ChatScreen = ({route}) => {
-  const {chatId} = route.params;
+  const {chatId, groupNameed} = route.params;
   const firestore = getFirestore();
   const currentUser = auth().currentUser; // Logged-in user info
 
@@ -114,7 +117,7 @@ const ChatScreen = ({route}) => {
       text: messageText,
       senderId: currentUser.uid,
       senderName: currentUser.displayName || 'Unknown',
-      createdAt: new Date(),
+      createdAt: serverTimestamp(), // 🔥 Firestore server timestamp
       seenBy: [currentUser.uid], // Mark sender as seen by default
     });
 
@@ -140,137 +143,105 @@ const ChatScreen = ({route}) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Group Name Header */}
-      <View style={styles.header}>
-        <Text style={styles.groupName}>{groupName}</Text>
-      </View>
-
-      {/* Messages List */}
-      <FlatList
-        data={messages}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => {
-          const isCurrentUser = item.senderId === currentUser.uid;
-          return (
-            <View
-              style={[
-                styles.messageContainer,
-                isCurrentUser ? styles.sentMessage : styles.receivedMessage,
-              ]}>
-              {!isCurrentUser && (
-                <Text style={styles.senderName}>{item.senderName}</Text>
-              )}
-              <Text style={styles.message}>{item.text}</Text>
-              <Text style={styles.seenByText}>
-                {item.seenBy.length > 1
-                  ? `Seen by ${item.seenBy.length} users`
-                  : item.seenBy.includes(currentUser.uid)
-                  ? 'Seen by you'
-                  : 'Not seen yet'}
-              </Text>
-            </View>
-          );
-        }}
-        contentContainerStyle={{paddingBottom: 80}} // Space for input field
-      />
-
-      {/* Typing Indicator (Animated) */}
-      {isTyping && (
-        <Animated.View
-          style={[styles.typingIndicator, {opacity: typingAnimation}]}>
-          <Text style={styles.typingText}>{typingUser} is typing...</Text>
-        </Animated.View>
-      )}
-
-      {/* Input Field */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={messageText}
-          onChangeText={handleTyping}
-          placeholder="Type a message..."
-          placeholderTextColor="#999"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{flex: 1}}>
+      <View style={styles.container}>
+        <MyStatusBar
+          translucent={true}
+          backgroundColor={colors?.primaryColor}
+          barStyle="dark-content"
         />
-        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Text style={styles.sendButtonText}>Send</Text>
-        </TouchableOpacity>
+        {/* Group Name Header */}
+        <View style={styles.header}>
+          <Text style={styles.groupName}>
+            {groupName ? groupName : groupNameed}
+          </Text>
+        </View>
+
+        {/* Messages List */}
+        <FlatList
+          data={messages}
+          keyExtractor={item => item.id}
+          renderItem={({item}) => {
+            const isCurrentUser = item.senderId === currentUser.uid;
+            const messageTime = item.createdAt?.seconds
+              ? new Date(item.createdAt.seconds * 1000).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : 'Sending...';
+
+            return (
+              <View
+                style={[
+                  styles.messageContainer,
+                  isCurrentUser ? styles.sentMessage : styles.receivedMessage,
+                ]}>
+                {!isCurrentUser && (
+                  <Text style={styles.senderName}>{item.senderName}</Text>
+                )}
+                <Text style={styles.message}>{item.text}</Text>
+                <Text style={styles.seenByText}>
+                  {messageTime} {' • '}
+                  {item.seenBy.length > 1
+                    ? `Seen by ${item.seenBy.length} users`
+                    : item.seenBy.includes(currentUser.uid)
+                    ? 'Seen by you'
+                    : 'Not seen yet'}
+                </Text>
+              </View>
+            );
+          }}
+          contentContainerStyle={{paddingBottom: 80}} // Space for input field
+        />
+
+        {/* Typing Indicator (Animated) */}
+        {isTyping && (
+          <Animated.View
+            style={[styles.typingIndicator, {opacity: typingAnimation}]}>
+            <Text style={styles.typingText}>{typingUser} is typing...</Text>
+          </Animated.View>
+        )}
+
+        {/* Input Field */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={messageText}
+            onChangeText={handleTyping}
+            placeholder="Type a message..."
+            placeholderTextColor="#999"
+          />
+          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+            <Text style={styles.sendButtonText}>Send</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: '#000'},
-
-  /* Group Name Header */
   header: {
     paddingVertical: 15,
     alignItems: 'center',
     backgroundColor: colors?.primaryColor,
-    elevation: 3,
   },
-  groupName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-
-  /* Messages Styling */
-  messageContainer: {
-    maxWidth: '75%',
-    padding: 10,
-    marginVertical: 5,
-    marginHorizontal: 10,
-    borderRadius: 10,
-  },
-  sentMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors?.primaryColor,
-    borderTopRightRadius: 0,
-  },
-  receivedMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#e3e3e3',
-    borderTopLeftRadius: 0,
-  },
-  message: {
-    fontSize: 16,
-    color: '#000',
-  },
-  senderName: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: colors?.primaryColor,
-    marginBottom: 3,
-  },
-  seenByText: {
-    fontSize: 12,
-    color: '#000',
-    marginTop: 5,
-    alignSelf: 'flex-end',
-  },
-
-  /* Typing Indicator */
-  typingIndicator: {
-    paddingVertical: 5,
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  typingText: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    color: '#777',
-  },
-
-  /* Input Field Styling */
+  groupName: {fontSize: 18, fontWeight: 'bold', color: colors?.white},
+  messageContainer: {maxWidth: '75%', padding: 10, margin: 5, borderRadius: 10},
+  sentMessage: {alignSelf: 'flex-end', backgroundColor: colors?.primaryColor},
+  receivedMessage: {alignSelf: 'flex-start', backgroundColor: '#e3e3e3'},
+  message: {fontSize: 16, color: '#000'},
+  senderName: {fontSize: 12, fontWeight: 'bold', color: colors?.primaryColor},
+  seenByText: {fontSize: 12, color: '#777', marginTop: 5},
   inputContainer: {
     flexDirection: 'row',
     backgroundColor: '#f0f0f0',
     borderRadius: 25,
     padding: 10,
     margin: 10,
-    alignItems: 'center',
   },
   input: {flex: 1, fontSize: 16, color: '#333'},
   sendButton: {

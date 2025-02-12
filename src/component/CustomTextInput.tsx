@@ -1,29 +1,40 @@
 import React from 'react';
-import { Pressable, Text, View, StyleSheet, TextInput, TextInputProps, ViewStyle } from 'react-native';
-import { colors } from '../assets/color';
-import { height, width } from '../assets/string.tsx';
+import {
+  Pressable,
+  Text,
+  View,
+  StyleSheet,
+  TextInput,
+  TextInputProps,
+  ViewStyle,
+} from 'react-native';
+import {colors} from '../assets/color';
+import {height, width} from '../assets/string.tsx';
 import fonts from '../assets/fonts';
 
 interface CustomTextInputProps extends TextInputProps {
   inputData: {
     title: string;
-    FirstIcon?: React.ComponentType<{ height: number, width: number }>;
-    SecondIcon?: React.ComponentType<{ height: number, width: number }>;
+    FirstIcon?: React.ComponentType<{height: number; width: number}>;
+    SecondIcon?: React.ComponentType<{height: number; width: number}>;
     palceHolderText: string;
     inputValue?: string;
     changedText: (text: string) => void;
     isPassword?: boolean;
+    keyboardType?: string;
     actionSecond?: () => void;
   };
   style?: ViewStyle;
 }
 
-const CustomTextInput: React.FC<CustomTextInputProps> = ({ inputData, style, ...rest }) => {
+const CustomTextInput: React.FC<CustomTextInputProps> = ({
+  inputData,
+  style,
+  ...rest
+}) => {
   return (
     <View style={[styles.inputWrapper, style]}>
-      {inputData?.title && (
-        <Text style={styles.text}>{inputData.title}</Text>
-      )}
+      {inputData?.title && <Text style={styles.text}>{inputData.title}</Text>}
       <View style={styles.TextInputStyles}>
         {inputData.FirstIcon && (
           <inputData.FirstIcon height={width / 20} width={width / 20} />
@@ -39,7 +50,9 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({ inputData, style, ...
           {...rest}
         />
         {inputData.SecondIcon ? (
-          <Pressable onPress={inputData.actionSecond} style={styles.actionSecondStyle}>
+          <Pressable
+            onPress={inputData.actionSecond}
+            style={styles.actionSecondStyle}>
             <inputData.SecondIcon height={width / 20} width={width / 20} />
           </Pressable>
         ) : (

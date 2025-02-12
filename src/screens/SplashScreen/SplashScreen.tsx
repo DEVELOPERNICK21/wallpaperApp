@@ -35,7 +35,7 @@ const SplashScreen: React.FC = () => {
       </Animated.View>
       <Animated.View
         style={[{transform: [{scale: scaleAnim}]}, styles?.bottomLogoView]}>
-        <Text style={styles?.textStyle}>SmartStaff</Text>
+        <Text style={styles?.textStyle}>Wallpaper</Text>
       </Animated.View>
     </View>
   );

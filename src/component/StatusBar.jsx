@@ -17,9 +17,7 @@ const MyStatusBar = ({backgroundColor, ...props}) => (
     <SafeAreaView>
       <StatusBar
         translucent
-        backgroundColor={
-          Platform.OS === 'android' ? 'transparent' : backgroundColor
-        }
+        backgroundColor={colors?.primaryColor}
         {...props}
       />
     </SafeAreaView>

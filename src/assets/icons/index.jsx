@@ -54,6 +54,7 @@ import NotificationSetting_SVG from './NotificationSetting.svg';
 import PrivacySetting_SVG from './PrivacySetting.svg';
 import TermSetting_SVG from './TermSetting.svg';
 import Logout_SVG from './Logout.svg';
+import UserFace_SVG from './UserFace.svg';
 
 export const ArrowWhite_Icon = ({width, height}) => (
   <ArrowWhite_SVG width={width} height={height} />
@@ -219,4 +220,7 @@ export const TermSetting_Icon = ({width, height}) => (
 );
 export const Logout_Icon = ({width, height}) => (
   <Logout_SVG width={width} height={height} />
+);
+export const UserFace_Icon = ({width, height}) => (
+  <UserFace_SVG width={width} height={height} />
 );
