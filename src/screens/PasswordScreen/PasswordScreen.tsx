@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 
-const FIRST_PASSWORD = '212000';
+const FIRST_PASSWORD = '331122';
 const SECOND_PASSWORD = '123456';
 
 const PasswordScreen = ({onUnlock}) => {
