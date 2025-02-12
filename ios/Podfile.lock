@@ -2999,7 +2999,7 @@ PODS:
     - RNFBApp
   - RNFS (2.20.0):
     - React-Core
-  - RNGestureHandler (2.22.0):
+  - RNGestureHandler (2.21.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -3616,7 +3616,7 @@ SPEC CHECKSUMS:
   RNFBAuth: 5a2069ec5b7a25eb00c76b2371f672ee3dae59f4
   RNFBFirestore: c10b0888d0d6e28460214a79d890396130413398
   RNFS: 4ac0f0ea233904cb798630b3c077808c06931688
-  RNGestureHandler: e697c8169061739b02f370f61d8afb6537935970
+  RNGestureHandler: d1d01cf4612e095ea3b96cf6f9251b366af6bcf3
   RNPermissions: f3d20fa09374b425bfd1bdacb40121c19e738d8b
   RNReanimated: 5c268cff742e86416974907d8596b173683e9ce6
   RNScreens: 6a595af73186eb6b85dfd82ded47d67989ae14b5
@@ -3626,6 +3626,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 93a4c16be50e6f29a7ef8e2b19505d7857c651fb
 
-PODFILE CHECKSUM: d33967a17d63f4aec7c3bbba34e3b93cccc6ef5b
+PODFILE CHECKSUM: 8cd10117141a7352e3de57393ac520400a7f44f9
 
 COCOAPODS: 1.16.2

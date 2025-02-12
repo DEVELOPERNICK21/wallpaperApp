@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View, FlatList} from 'react-native';
 import HomeHeader from '../../component/Header/HomeHeader.tsx';
 import {colors} from '../../assets/color';
 import MyStatusBar from '../../component/StatusBar.jsx';
@@ -8,7 +8,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {RootState} from '../../redux/reducers/index.ts';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import CommonHeader from '../../component/Header/CommonHeader.tsx';
-import {FlatList} from 'react-native-gesture-handler';
+
 import AlertTile from '../../component/Tiles/AlertTile.tsx';
 
 const AlertScreen: React.FC = () => {
