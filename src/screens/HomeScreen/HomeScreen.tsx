@@ -35,6 +35,9 @@ import {UserFace_Icon} from '../../assets/icons';
 const HomeScreen = () => {
   const [chats, setChats] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const user = useSelector((state: RootState) => state.userDetails);
   const dispatch = useDispatch();
   const navigation = useNavigation();
@@ -130,6 +133,35 @@ const HomeScreen = () => {
     });
   };
 
+  const deleteGroupChat = async () => {
+    if (!selectedChat) return;
+
+    try {
+      const messagesRef = collection(
+        firestore,
+        `GroupChats/${selectedChat.id}/Messages`,
+      );
+      const messagesSnapshot = await getDocs(messagesRef);
+      const batch = firestore.batch();
+
+      messagesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      const chatRef = collection(firestore, 'GroupChats');
+      batch.delete(chatRef.doc(selectedChat.id));
+
+      await batch.commit();
+      console.log('Group Chat deleted successfully');
+
+      setShowDeleteModal(false); // Close modal after deletion
+      setSelectedChat(null);
+      fetchChats(); // Refresh chat list
+    } catch (error) {
+      console.error('Error deleting group chat:', error);
+    }
+  };
+
   return (
     <View style={[styles.homeWrapper]}>
       <MyStatusBar
@@ -169,8 +201,11 @@ const HomeScreen = () => {
               styles.chatItem,
               {backgroundColor: item.lastMessage ? '#000' : '#1A1A1A'},
             ]}
-            onPress={() => openChat(item)}>
-            {/* Circular Group Name Icon */}
+            onPress={() => openChat(item)}
+            onLongPress={() => {
+              setSelectedChat(item);
+              setShowDeleteModal(true);
+            }}>
             <View style={styles.chatCircle}>
               <Text style={styles.chatInitial}>
                 {item.name ? item.name.charAt(0).toUpperCase() : '?'}
@@ -193,6 +228,31 @@ const HomeScreen = () => {
         )}
         ListEmptyComponent={<Text style={styles.noChats}>No chats found</Text>}
       />
+
+      {showDeleteModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Delete Group?</Text>
+            <Text style={styles.modalText}>
+              Are you sure you want to delete "{selectedChat?.name}"?
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <Pressable
+                onPress={() => setShowDeleteModal(false)}
+                style={styles.cancelButton}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={deleteGroupChat}
+                style={styles.deleteConfirmButton}>
+                <Text style={styles.deleteConfirmText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Floating Button */}
       <Pressable
@@ -332,5 +392,85 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: colors?.white,
+  },
+  chatItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 10,
+  },
+
+  deleteButton: {
+    padding: 10,
+    marginLeft: 10,
+  },
+
+  deleteButtonText: {
+    fontSize: 18,
+    color: 'red',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  modalContainer: {
+    width: '80%',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+
+  modalText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#ddd',
+    padding: 10,
+    alignItems: 'center',
+    borderRadius: 5,
+    marginRight: 5,
+  },
+
+  deleteConfirmButton: {
+    flex: 1,
+    backgroundColor: 'red',
+    padding: 10,
+    alignItems: 'center',
+    borderRadius: 5,
+  },
+
+  cancelText: {
+    fontSize: 16,
+    color: '#000',
+  },
+
+  deleteConfirmText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });

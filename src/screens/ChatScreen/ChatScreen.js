@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Animated,
   KeyboardAvoidingView,
+  Alert,
 } from 'react-native';
 import {
   getFirestore,
@@ -21,10 +22,13 @@ import {
   arrayUnion,
   getDoc,
   serverTimestamp,
+  deleteDoc,
 } from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import {colors} from '../../assets/color';
 import MyStatusBar from '../../component/StatusBar';
+import storage from '@react-native-firebase/storage';
+import {launchImageLibrary} from 'react-native-image-picker';
 
 const ChatScreen = ({route}) => {
   const {chatId, groupNameed} = route.params;
@@ -119,18 +123,15 @@ const ChatScreen = ({route}) => {
   };
 
   // Send Message
-  const sendMessage = async () => {
-    if (!messageText.trim()) return;
-
+  const sendImageMessage = async imageUrl => {
     await addDoc(collection(firestore, `GroupChats/${chatId}/Messages`), {
-      text: messageText,
+      imageUrl: imageUrl,
       senderId: currentUser.uid,
       senderName: currentUser.displayName || 'Unknown',
-      createdAt: serverTimestamp(), // 🔥 Firestore server timestamp
-      seenBy: [currentUser.uid], // Mark sender as seen by default
+      createdAt: serverTimestamp(),
+      seenBy: [currentUser.uid],
     });
 
-    setMessageText('');
     await updateDoc(doc(firestore, 'GroupChats', chatId), {typingUser: ''});
   };
 
@@ -149,6 +150,80 @@ const ChatScreen = ({route}) => {
       duration: 300,
       useNativeDriver: true,
     }).start(() => setIsTyping(false));
+  };
+
+  // delete Message
+  const deleteMessage = async message => {
+    Alert.alert(
+      'Delete Message',
+      'Do you want to delete this message?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete for Me',
+          onPress: () => deleteForMe(message.id),
+        },
+        message.senderId === currentUser.uid
+          ? {
+              text: 'Delete for Everyone',
+              onPress: () => deleteForEveryone(message.id),
+            }
+          : null,
+      ].filter(Boolean),
+    );
+  };
+
+  const deleteForMe = async messageId => {
+    setMessages(prevMessages =>
+      prevMessages.filter(message => message.id !== messageId),
+    );
+  };
+
+  const deleteForEveryone = async messageId => {
+    await deleteDoc(doc(firestore, `GroupChats/${chatId}/Messages`, messageId));
+  };
+
+  const pickImage = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.8,
+    });
+
+    if (result.assets && result.assets.length > 0) {
+      const imageUri = result.assets[0].uri;
+      uploadImage(imageUri);
+    }
+  };
+
+  const uploadImage = async uri => {
+    const fileName = `chat_images/${chatId}/${Date.now()}.jpg`;
+    const reference = storage().ref(fileName);
+
+    try {
+      await reference.putFile(uri);
+      const imageUrl = await reference.getDownloadURL();
+      sendImageMessage(imageUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!messageText.trim()) return;
+
+    await addDoc(collection(firestore, `GroupChats/${chatId}/Messages`), {
+      text: messageText,
+      senderId: currentUser.uid,
+      senderName: currentUser.displayName || 'Unknown',
+      createdAt: serverTimestamp(),
+      seenBy: [currentUser.uid], // Mark sender as seen by default
+    });
+
+    setMessageText('');
+    await updateDoc(doc(firestore, 'GroupChats', chatId), {typingUser: ''});
   };
 
   return (
@@ -184,27 +259,38 @@ const ChatScreen = ({route}) => {
               : 'Sending...';
 
             return (
-              <View
-                style={[
-                  styles.messageContainer,
-                  isCurrentUser ? styles.sentMessage : styles.receivedMessage,
-                ]}>
-                {!isCurrentUser && (
-                  <Text style={styles.senderName}>{item.senderName}</Text>
-                )}
-                <Text style={styles.message}>{item.text}</Text>
-                <Text style={styles.seenByText}>
-                  {messageTime} {' • '}
-                  {item.seenBy.length > 1
-                    ? `Seen by ${item.seenBy.length} users`
-                    : item.seenBy.includes(currentUser.uid)
-                    ? 'Seen by you'
-                    : 'Not seen yet'}
-                </Text>
-              </View>
+              <TouchableOpacity onLongPress={() => deleteMessage(item)}>
+                <View
+                  style={[
+                    styles.messageContainer,
+                    isCurrentUser ? styles.sentMessage : styles.receivedMessage,
+                  ]}>
+                  {!isCurrentUser && (
+                    <Text style={styles.senderName}>{item.senderName}</Text>
+                  )}
+
+                  {item.imageUrl ? (
+                    <Image
+                      source={{uri: item.imageUrl}}
+                      style={styles.chatImage}
+                    />
+                  ) : (
+                    <Text style={styles.message}>{item.text}</Text>
+                  )}
+
+                  <Text style={styles.seenByText}>
+                    {messageTime} {' • '}
+                    {item.seenBy.length > 1
+                      ? `Seen by ${item.seenBy.length} users`
+                      : item.seenBy.includes(currentUser.uid)
+                      ? 'Seen by you'
+                      : 'Not seen yet'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
             );
           }}
-          contentContainerStyle={{paddingBottom: 80}} // Space for input field
+          contentContainerStyle={{paddingBottom: 80}}
         />
 
         {/* Typing Indicator (Animated) */}
@@ -217,6 +303,12 @@ const ChatScreen = ({route}) => {
 
         {/* Input Field */}
         <View style={styles.inputContainer}>
+          <TouchableOpacity
+            onPress={pickImage}
+            style={styles.imagePickerButton}>
+            <Text style={styles.imagePickerText}>📷</Text>
+          </TouchableOpacity>
+
           <TextInput
             style={styles.input}
             value={messageText}
@@ -224,6 +316,7 @@ const ChatScreen = ({route}) => {
             placeholder="Type a message..."
             placeholderTextColor="#999"
           />
+
           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
             <Text style={styles.sendButtonText}>Send</Text>
           </TouchableOpacity>
@@ -268,6 +361,21 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#333',
     borderRadius: 10,
+  },
+  chatImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    marginTop: 5,
+  },
+  imagePickerButton: {
+    marginRight: 10,
+    padding: 8,
+    backgroundColor: '#ddd',
+    borderRadius: 50,
+  },
+  imagePickerText: {
+    fontSize: 18,
   },
 
   typingText: {
