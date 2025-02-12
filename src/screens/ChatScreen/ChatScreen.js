@@ -36,8 +36,16 @@ const ChatScreen = ({route}) => {
   const [groupName, setGroupName] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState('');
+  const flatListRef = useRef(null);
 
   const typingAnimation = useRef(new Animated.Value(0)).current; // Animation ref
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({animated: true});
+      }, 300); // Delay for smooth scrolling
+    }
+  }, [messages]);
 
   useEffect(() => {
     // Fetch Group Name
@@ -49,6 +57,7 @@ const ChatScreen = ({route}) => {
         setGroupName('Group Chat');
       }
     };
+
     fetchGroupName();
 
     // Listen for Messages
@@ -160,7 +169,9 @@ const ChatScreen = ({route}) => {
         </View>
 
         {/* Messages List */}
+
         <FlatList
+          ref={flatListRef}
           data={messages}
           keyExtractor={item => item.id}
           renderItem={({item}) => {
@@ -250,6 +261,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sendButtonText: {color: 'white', fontWeight: 'bold'},
+  typingIndicator: {
+    padding: 10,
+    marginHorizontal: 10,
+    marginBottom: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: '#333',
+    borderRadius: 10,
+  },
+
+  typingText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#fff',
+  },
 });
 
 export default ChatScreen;
