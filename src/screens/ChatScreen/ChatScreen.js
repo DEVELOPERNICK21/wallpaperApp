@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Alert,
   Linking,
+  Clipboard,
 } from 'react-native';
 import {
   getFirestore,
@@ -281,6 +282,11 @@ const ChatScreen = ({route}) => {
     return text.match(urlRegex);
   };
 
+  const copyToClipboard = text => {
+    Clipboard.setString(text);
+    Alert.alert('Copied', 'Message copied to clipboard');
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -330,7 +336,9 @@ const ChatScreen = ({route}) => {
                       style={styles.chatImage}
                     />
                   ) : (
-                    <Text style={styles.message}>
+                    <Text
+                      style={styles.message}
+                      onLongPress={() => copyToClipboard(item.text)}>
                       {item.text.split(' ').map((word, index) => {
                         const urls = extractUrls(word);
                         if (urls) {
