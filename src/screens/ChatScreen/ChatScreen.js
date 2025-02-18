@@ -9,6 +9,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   Alert,
+  Linking,
 } from 'react-native';
 import {
   getFirestore,
@@ -275,6 +276,11 @@ const ChatScreen = ({route}) => {
     }).catch(error => console.error('Error sending notification:', error));
   };
 
+  const extractUrls = text => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g; // Regex to find URLs
+    return text.match(urlRegex);
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -324,7 +330,22 @@ const ChatScreen = ({route}) => {
                       style={styles.chatImage}
                     />
                   ) : (
-                    <Text style={styles.message}>{item.text}</Text>
+                    <Text style={styles.message}>
+                      {item.text.split(' ').map((word, index) => {
+                        const urls = extractUrls(word);
+                        if (urls) {
+                          return (
+                            <Text
+                              key={index}
+                              style={styles.urlText} // Style for clickable links
+                              onPress={() => Linking.openURL(word)}>
+                              {word}{' '}
+                            </Text>
+                          );
+                        }
+                        return word + ' '; // Add spaces back between words
+                      })}
+                    </Text>
                   )}
 
                   <Text style={styles.seenByText}>
@@ -431,6 +452,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     color: '#fff',
+  },
+  urlText: {
+    color: 'blue',
+    textDecorationLine: 'underline',
   },
 });
 
