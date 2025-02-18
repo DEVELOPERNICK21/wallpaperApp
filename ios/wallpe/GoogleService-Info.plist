@@ -26,5 +26,7 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:686723359931:ios:626efd28c0ef1e66e7759e</string>
+	<key>DATABASE_URL</key>
+	<string>https://wallpemsg-default-rtdb.firebaseio.com</string>
 </dict>
 </plist>

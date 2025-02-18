@@ -214,16 +214,65 @@ const ChatScreen = ({route}) => {
   const sendMessage = async () => {
     if (!messageText.trim()) return;
 
-    await addDoc(collection(firestore, `GroupChats/${chatId}/Messages`), {
-      text: messageText,
-      senderId: currentUser.uid,
-      senderName: currentUser.displayName || 'Unknown',
-      createdAt: serverTimestamp(),
-      seenBy: [currentUser.uid], // Mark sender as seen by default
-    });
+    // Add the message to Firestore
+    const messageRef = await addDoc(
+      collection(firestore, `GroupChats/${chatId}/Messages`),
+      {
+        text: messageText,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || 'Unknown',
+        createdAt: serverTimestamp(),
+        seenBy: [currentUser.uid], // Mark sender as seen by default
+      },
+    );
 
     setMessageText('');
+    // Reset typing status
     await updateDoc(doc(firestore, 'GroupChats', chatId), {typingUser: ''});
+
+    // Fetch the FCM tokens of other users in the chat
+    const groupDoc = await getDoc(doc(firestore, 'GroupChats', chatId));
+    if (groupDoc.exists()) {
+      const members = groupDoc.data().members || [];
+
+      // Fetch FCM tokens for each member except the sender
+      const tokens = [];
+      for (const memberId of members) {
+        if (memberId !== currentUser.uid) {
+          const userDoc = await getDoc(doc(firestore, 'users', memberId));
+          if (userDoc.exists() && userDoc.data().fcmToken) {
+            tokens.push(userDoc.data().fcmToken);
+          }
+        }
+      }
+
+      // Send push notifications
+      for (const token of tokens) {
+        sendPushNotification(token, currentUser.displayName, messageText);
+      }
+    }
+
+    setMessageText('');
+  };
+
+  // Function to send push notifications
+  const sendPushNotification = async (token, senderName, message) => {
+    fetch('https://fcm.googleapis.com/fcm/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `key=YOUR_SERVER_KEY`, // Replace with your FCM server key
+      },
+      body: JSON.stringify({
+        to: token,
+        notification: {
+          title: 'Wallpaper',
+          body: `${senderName}: ${message}`,
+          sound: 'default',
+        },
+        data: {message},
+      }),
+    }).catch(error => console.error('Error sending notification:', error));
   };
 
   return (

@@ -29,6 +29,7 @@ const PasswordScreen = ({onUnlock}) => {
       <TextInput
         style={styles.input}
         secureTextEntry
+        keyboardType="number-pad"
         value={password}
         onChangeText={setPassword}
         placeholder="Enter password"

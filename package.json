@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.1.1",
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.0.0",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-firebase/app": "^21.8.0",
     "@react-native-firebase/auth": "^21.8.0",
     "@react-native-firebase/firestore": "^21.8.0",
+    "@react-native-firebase/messaging": "^21.10.0",
     "@react-native-firebase/storage": "^21.10.0",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",

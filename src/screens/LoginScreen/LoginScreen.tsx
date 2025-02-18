@@ -34,6 +34,9 @@ import {ShowErrorMessage} from '../../component/FlashMessage/FlashMessage.tsx';
 import {getAuth} from '@react-native-firebase/auth';
 import {storeUserDetails} from '../../reduxrf/actions/user.ts';
 
+import messaging from '@react-native-firebase/messaging';
+import firestore from '@react-native-firebase/firestore';
+
 const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
@@ -67,21 +70,57 @@ const LoginScreen: React.FC = () => {
     },
   };
 
+  const updateFCMToken = async userId => {
+    try {
+      console.log('Checking FCM Token...');
+
+      // Only required for iOS devices
+      if (Platform.OS === 'ios') {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+
+      // Get the FCM token
+      const token = await messaging().getToken();
+
+      if (token) {
+        console.log('FCM Token:', token); // Log the token for debugging
+
+        // Store the token in Firestore under the user's document
+        await firestore()
+          .collection('users')
+          .doc(userId)
+          .set({fcmToken: token}, {merge: true}); // Merge ensures existing data isn't overwritten
+
+        console.log('✅ FCM Token updated successfully');
+      } else {
+        console.warn('⚠️ No FCM token received');
+      }
+    } catch (error) {
+      console.error('❌ Error updating FCM Token:', error);
+    }
+  };
+
   const handleLogin = async () => {
     try {
+      setLoading(true);
       const userCredential = await auth.signInWithEmailAndPassword(
         email,
         password,
       );
       const user = userCredential.user;
 
-      // Dispatch user details to Redux store
+      // Store user details in Redux
       dispatch(storeUserDetails(user));
 
-      // Navigate to the next screen
+      // Update FCM token in Firestore
+      await updateFCMToken(user.uid);
+
+      // Navigate to the next screen (adjust as needed)
+      navigation.navigate(ScreenConstants.HOME_SCREEN);
     } catch (error) {
       ShowErrorMessage(error.message);
-      // Alert.alert("Login Error", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
