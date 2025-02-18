@@ -42,6 +42,7 @@ const ChatScreen = ({route}) => {
   const [groupName, setGroupName] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState('');
+  const [replyMessage, setReplyMessage] = useState(null);
   const flatListRef = useRef(null);
 
   const typingAnimation = useRef(new Animated.Value(0)).current; // Animation ref
@@ -99,6 +100,23 @@ const ChatScreen = ({route}) => {
     };
   }, [chatId]);
 
+  useEffect(() => {
+    const q = query(
+      collection(firestore, `GroupChats/${chatId}/Messages`),
+      orderBy('createdAt', 'asc'),
+    );
+
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const newMessages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setMessages(newMessages);
+    });
+
+    return () => unsubscribe();
+  }, [chatId]);
+
   // Function to mark messages as seen
   const markMessagesAsSeen = async messages => {
     for (let message of messages) {
@@ -126,14 +144,17 @@ const ChatScreen = ({route}) => {
 
   // Send Message
   const sendImageMessage = async imageUrl => {
+    if (!imageUrl) return;
+
     await addDoc(collection(firestore, `GroupChats/${chatId}/Messages`), {
       imageUrl: imageUrl,
       senderId: currentUser.uid,
       senderName: currentUser.displayName || 'Unknown',
       createdAt: serverTimestamp(),
-      seenBy: [currentUser.uid],
+      seenBy: [currentUser.uid], // Mark sender as seen by default
     });
 
+    // Reset typing status
     await updateDoc(doc(firestore, 'GroupChats', chatId), {typingUser: ''});
   };
 
@@ -196,7 +217,13 @@ const ChatScreen = ({route}) => {
 
     if (result.assets && result.assets.length > 0) {
       const imageUri = result.assets[0].uri;
-      uploadImage(imageUri);
+      if (imageUri) {
+        uploadImage(imageUri); // Pass the correct URI to upload
+      } else {
+        console.error('No image URI found');
+      }
+    } else {
+      console.error('No image selected');
     }
   };
 
@@ -207,7 +234,7 @@ const ChatScreen = ({route}) => {
     try {
       await reference.putFile(uri);
       const imageUrl = await reference.getDownloadURL();
-      sendImageMessage(imageUrl);
+      sendImageMessage(imageUrl); // Send the image message
     } catch (error) {
       console.error('Error uploading image:', error);
     }
@@ -225,10 +252,19 @@ const ChatScreen = ({route}) => {
         senderName: currentUser.displayName || 'Unknown',
         createdAt: serverTimestamp(),
         seenBy: [currentUser.uid], // Mark sender as seen by default
+        replyTo: replyMessage
+          ? {
+              id: replyMessage.id,
+              text: replyMessage.text,
+              sender: replyMessage.senderName,
+            }
+          : null,
       },
     );
 
     setMessageText('');
+    setReplyMessage(null);
+
     // Reset typing status
     await updateDoc(doc(firestore, 'GroupChats', chatId), {typingUser: ''});
 
@@ -255,6 +291,11 @@ const ChatScreen = ({route}) => {
     }
 
     setMessageText('');
+  };
+
+  const handleReply = message => {
+    console.log('STARED');
+    setReplyMessage(message);
   };
 
   // Function to send push notifications
@@ -320,7 +361,9 @@ const ChatScreen = ({route}) => {
               : 'Sending...';
 
             return (
-              <TouchableOpacity onLongPress={() => deleteMessage(item)}>
+              <TouchableOpacity
+                onLongPress={() => deleteMessage(item)}
+                onPress={() => handleReply(item)}>
                 <View
                   style={[
                     styles.messageContainer,
@@ -328,6 +371,13 @@ const ChatScreen = ({route}) => {
                   ]}>
                   {!isCurrentUser && (
                     <Text style={styles.senderName}>{item.senderName}</Text>
+                  )}
+                  {item.replyTo && (
+                    <View style={styles.replyContainer}>
+                      <Text style={styles.replyText}>
+                        {item.replyTo.sender}: {item.replyTo.text}
+                      </Text>
+                    </View>
                   )}
 
                   {item.imageUrl ? (
@@ -370,6 +420,18 @@ const ChatScreen = ({route}) => {
           }}
           contentContainerStyle={{paddingBottom: 80}}
         />
+
+        {replyMessage && (
+          <View style={styles.replyPreview}>
+            <Text style={styles.replyText}>
+              Replying to: {replyMessage.senderName}
+            </Text>
+            <Text style={styles.replyText}>"{replyMessage.text}"</Text>
+            <TouchableOpacity onPress={() => setReplyMessage(null)}>
+              <Text style={styles.cancelReply}>X</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Typing Indicator (Animated) */}
         {isTyping && (
@@ -446,6 +508,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 5,
   },
+
   imagePickerButton: {
     marginRight: 10,
     padding: 8,
@@ -464,6 +527,22 @@ const styles = StyleSheet.create({
   urlText: {
     color: 'blue',
     textDecorationLine: 'underline',
+  },
+  replyPreview: {
+    backgroundColor: '#333',
+    padding: 10,
+    marginHorizontal: 10,
+    marginBottom: 5,
+    borderRadius: 10,
+  },
+  replyText: {color: '#000', fontStyle: 'italic'},
+  cancelReply: {color: 'red', fontWeight: 'bold', marginLeft: 5},
+  replyContainer: {
+    backgroundColor: colors?.greyColor,
+    padding: 5,
+    borderRadius: 5,
+    marginBottom: 5,
+    color: 'red',
   },
 });
 
