@@ -1,16 +1,19 @@
 import {NavigationContainer} from '@react-navigation/native';
-import React, {useEffect, useState} from 'react';
-import {AppState} from 'react-native';
+import React, {useEffect, useState, useRef} from 'react';
+import {
+  AppState,
+  TouchableWithoutFeedback,
+  View,
+  InteractionManager,
+} from 'react-native';
 import AuthNavigation from './AuthNavigation';
 import AppRoutes from './AppRoutes';
-import {useSelector} from 'react-redux';
-import {RootState} from '../redux/reducers';
-import {PasswordScreen, SplashScreen} from '../screens';
 import {getAuth, onAuthStateChanged} from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WallpaperStack from './WallpaperStack';
+import {PasswordScreen, SplashScreen} from '../screens';
 
-const LOCK_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
+const LOCK_TIMEOUT = 2 * 60 * 1000; // 2 minutes
 
 const Index = () => {
   const [initializing, setInitializing] = useState(false);
@@ -18,7 +21,8 @@ const Index = () => {
   const [showPasswordScreen, setShowPasswordScreen] = useState(true);
   const [screenToShow, setScreenToShow] = useState(null);
   const [appState, setAppState] = useState(AppState.currentState);
-  let lockTimer = null;
+
+  const lockTimerRef = useRef(null);
 
   useEffect(() => {
     resetPasswordScreenOnLaunch();
@@ -26,19 +30,16 @@ const Index = () => {
 
   useEffect(() => {
     const authInstance = getAuth();
-
     const unsubscribe = onAuthStateChanged(authInstance, user => {
       setUser(user);
-      console.log(user, 'USER');
       if (initializing) {
         setInitializing(false);
       }
     });
-
     return unsubscribe;
   }, []);
 
-  // Ensures password screen always appears after relaunching the app
+  // Ensures password screen appears on relaunch
   const resetPasswordScreenOnLaunch = async () => {
     await AsyncStorage.removeItem('lastActiveTime');
     setShowPasswordScreen(true);
@@ -52,14 +53,13 @@ const Index = () => {
     resetLockTimer();
   };
 
-  // Start tracking app state changes
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'background') {
-        // Lock the app immediately when moved to background
+        // If app goes to background, store last active time
         setShowPasswordScreen(true);
       } else if (appState === 'background' && nextAppState === 'active') {
-        // If returning from background, check inactivity
+        // On returning, check inactivity
         checkInactivity();
       }
       setAppState(nextAppState);
@@ -67,11 +67,11 @@ const Index = () => {
 
     return () => {
       subscription.remove();
-      if (lockTimer) clearTimeout(lockTimer);
+      clearTimeout(lockTimerRef.current);
     };
   }, [appState]);
 
-  // Check if the app was inactive for more than 2 minutes
+  // Check if inactive for more than 2 minutes
   const checkInactivity = async () => {
     const lastActiveTime = await AsyncStorage.getItem('lastActiveTime');
     if (lastActiveTime) {
@@ -82,20 +82,23 @@ const Index = () => {
     }
   };
 
-  // Restart the inactivity timer when user is active
+  // Reset lock timer on activity
   const resetLockTimer = () => {
-    if (lockTimer) clearTimeout(lockTimer);
-    lockTimer = setTimeout(() => {
+    clearTimeout(lockTimerRef.current);
+    lockTimerRef.current = setTimeout(() => {
       setShowPasswordScreen(true);
     }, LOCK_TIMEOUT);
   };
 
-  // Reset the lock timer whenever the user interacts with the app
+  // Detect user activity (touches, scrolling, typing, etc.)
+  const handleUserActivity = async () => {
+    await AsyncStorage.setItem('lastActiveTime', Date.now().toString());
+    resetLockTimer();
+  };
+
   useEffect(() => {
     resetLockTimer();
-    return () => {
-      if (lockTimer) clearTimeout(lockTimer);
-    };
+    return () => clearTimeout(lockTimerRef.current);
   }, []);
 
   if (initializing) {
@@ -103,19 +106,23 @@ const Index = () => {
   }
 
   return (
-    <NavigationContainer>
-      {showPasswordScreen ? (
-        <PasswordScreen onUnlock={handleUnlock} />
-      ) : screenToShow === 'chat' ? (
-        user ? (
-          <AppRoutes />
-        ) : (
-          <AuthNavigation />
-        )
-      ) : (
-        <WallpaperStack />
-      )}
-    </NavigationContainer>
+    <TouchableWithoutFeedback onPress={handleUserActivity}>
+      <View style={{flex: 1}} onLayout={handleUserActivity}>
+        <NavigationContainer>
+          {showPasswordScreen ? (
+            <PasswordScreen onUnlock={handleUnlock} />
+          ) : screenToShow === 'chat' ? (
+            user ? (
+              <AppRoutes />
+            ) : (
+              <AuthNavigation />
+            )
+          ) : (
+            <WallpaperStack />
+          )}
+        </NavigationContainer>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
