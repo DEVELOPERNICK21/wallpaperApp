@@ -37,6 +37,7 @@ const HomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
 
   const user = useSelector((state: RootState) => state.userDetails);
   const dispatch = useDispatch();
@@ -162,6 +163,31 @@ const HomeScreen = () => {
     }
   };
 
+  const clearChatMessages = async chat => {
+    if (!chat) return;
+
+    try {
+      const messagesRef = collection(
+        firestore,
+        `GroupChats/${chat.id}/Messages`,
+      );
+      const messagesSnapshot = await getDocs(messagesRef);
+      const batch = firestore.batch();
+
+      messagesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      console.log(`Messages cleared for ${chat.name}`);
+
+      // Refresh chat list
+      fetchChats();
+    } catch (error) {
+      console.error('Error clearing messages:', error);
+    }
+  };
+
   return (
     <View style={[styles.homeWrapper]}>
       <MyStatusBar
@@ -204,7 +230,8 @@ const HomeScreen = () => {
             onPress={() => openChat(item)}
             onLongPress={() => {
               setSelectedChat(item);
-              setShowDeleteModal(true);
+              // setShowDeleteModal(true);
+              setShowOptionsModal(true);
             }}>
             <View style={styles.chatCircle}>
               <Text style={styles.chatInitial}>
@@ -228,6 +255,41 @@ const HomeScreen = () => {
         )}
         ListEmptyComponent={<Text style={styles.noChats}>No chats found</Text>}
       />
+
+      {showOptionsModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Chat Options</Text>
+
+            {/* Clear Messages Option */}
+            <Pressable
+              onPress={() => {
+                clearChatMessages(selectedChat);
+                setShowOptionsModal(false);
+              }}
+              style={styles.optionButton}>
+              <Text style={styles.optionText}>Clear Messages</Text>
+            </Pressable>
+
+            {/* Delete Group Option */}
+            <Pressable
+              onPress={() => {
+                setShowOptionsModal(false);
+                setShowDeleteModal(true);
+              }}
+              style={styles.deleteConfirmButton}>
+              <Text style={styles.deleteConfirmText}>Delete Group</Text>
+            </Pressable>
+
+            {/* Cancel Option */}
+            <Pressable
+              onPress={() => setShowOptionsModal(false)}
+              style={styles.cancelButton}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {showDeleteModal && (
         <View style={styles.modalOverlay}>
@@ -447,7 +509,7 @@ const styles = StyleSheet.create({
   },
 
   cancelButton: {
-    flex: 1,
+    // flex: 1,
     backgroundColor: '#ddd',
     padding: 10,
     alignItems: 'center',
@@ -456,7 +518,7 @@ const styles = StyleSheet.create({
   },
 
   deleteConfirmButton: {
-    flex: 1,
+    // flex: 1,
     backgroundColor: 'red',
     padding: 10,
     alignItems: 'center',
@@ -471,6 +533,20 @@ const styles = StyleSheet.create({
   deleteConfirmText: {
     fontSize: 16,
     color: '#fff',
+    fontWeight: 'bold',
+  },
+  optionButton: {
+    // flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 10,
+    alignItems: 'center',
+    borderRadius: 5,
+    marginBottom: 5,
+  },
+
+  optionText: {
+    fontSize: 16,
+    color: '#000',
     fontWeight: 'bold',
   },
 });

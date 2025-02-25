@@ -31,6 +31,7 @@ import {colors} from '../../assets/color';
 import MyStatusBar from '../../component/StatusBar';
 import storage from '@react-native-firebase/storage';
 import {launchImageLibrary} from 'react-native-image-picker';
+import {width} from '../../assets/string';
 
 const ChatScreen = ({route}) => {
   const {chatId, groupNameed} = route.params;
@@ -50,7 +51,7 @@ const ChatScreen = ({route}) => {
     if (messages.length > 0) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({animated: true});
-      }, 300); // Delay for smooth scrolling
+      }, 100); // Small delay ensures it runs after render
     }
   }, [messages]);
 
@@ -350,6 +351,11 @@ const ChatScreen = ({route}) => {
         <FlatList
           ref={flatListRef}
           data={messages}
+          inverted={false}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({animated: true})
+          }
+          onLayout={() => flatListRef.current?.scrollToEnd({animated: true})}
           keyExtractor={item => item.id}
           renderItem={({item}) => {
             const isCurrentUser = item.senderId === currentUser.uid;
@@ -423,11 +429,13 @@ const ChatScreen = ({route}) => {
 
         {replyMessage && (
           <View style={styles.replyPreview}>
-            <Text style={styles.replyText}>
+            <Text style={styles.onlyDownReply}>
               Replying to: {replyMessage.senderName}
             </Text>
-            <Text style={styles.replyText}>"{replyMessage.text}"</Text>
-            <TouchableOpacity onPress={() => setReplyMessage(null)}>
+            <Text style={styles.onlyDownReply}>"{replyMessage.text}"</Text>
+            <TouchableOpacity
+              onPress={() => setReplyMessage(null)}
+              style={styles?.crossStyle}>
               <Text style={styles.cancelReply}>X</Text>
             </TouchableOpacity>
           </View>
@@ -535,8 +543,25 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     borderRadius: 10,
   },
-  replyText: {color: '#000', fontStyle: 'italic'},
-  cancelReply: {color: 'red', fontWeight: 'bold', marginLeft: 5},
+  replyText: {color: colors?.black, fontStyle: 'italic'},
+  onlyDownReply: {color: colors?.white, fontStyle: 'italic'},
+  cancelReply: {color: 'red', fontWeight: 'bold'},
+  crossStyle: {
+    backgroundColor: colors?.greyColor,
+    color: 'red',
+    fontWeight: 'bold',
+    // marginLeft: 5,
+    position: 'absolute',
+    right: width / 25,
+    top: 5,
+    height: width / 20,
+    width: width / 20,
+    borderRadius: width,
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    alignContent: 'center',
+  },
   replyContainer: {
     backgroundColor: colors?.greyColor,
     padding: 5,

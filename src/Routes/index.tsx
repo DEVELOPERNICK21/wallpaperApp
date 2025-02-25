@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import WallpaperStack from './WallpaperStack';
 import {PasswordScreen, SplashScreen} from '../screens';
 
-const LOCK_TIMEOUT = 2 * 60 * 1000; // 2 minutes
+const LOCK_TIMEOUT = 3 * 60 * 1000; // 2 minutes
 
 const Index = () => {
   const [initializing, setInitializing] = useState(false);
