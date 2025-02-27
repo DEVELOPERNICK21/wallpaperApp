@@ -102,6 +102,12 @@ const ChatScreen = ({route}) => {
   }, [chatId]);
 
   useEffect(() => {
+    if (chatId) {
+      markChatAsRead(chatId);
+    }
+  }, [chatId]);
+
+  useEffect(() => {
     const q = query(
       collection(firestore, `GroupChats/${chatId}/Messages`),
       orderBy('createdAt', 'asc'),
@@ -117,6 +123,21 @@ const ChatScreen = ({route}) => {
 
     return () => unsubscribe();
   }, [chatId]);
+
+  const markChatAsRead = async chatId => {
+    try {
+      const userId = auth.currentUser.uid;
+      const chatRef = doc(firestore, 'GroupChats', chatId);
+
+      await updateDoc(chatRef, {
+        [`lastReadTimestamps.${userId}`]: serverTimestamp(),
+      });
+
+      console.log(`Marked chat ${chatId} as read`);
+    } catch (error) {
+      console.error('Error marking chat as read:', error);
+    }
+  };
 
   // Function to mark messages as seen
   const markMessagesAsSeen = async messages => {

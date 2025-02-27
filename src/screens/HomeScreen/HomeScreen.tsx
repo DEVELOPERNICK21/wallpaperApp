@@ -44,6 +44,61 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const firestore = getFirestore();
 
+  // const fetchChats = async () => {
+  //   if (!user?.user?.uid) return;
+  //   setRefreshing(true);
+
+  //   try {
+  //     const q = query(
+  //       collection(firestore, 'GroupChats'),
+  //       where('members', 'array-contains', user.user.uid),
+  //     );
+
+  //     const snapshot = await getDocs(q);
+
+  //     if (snapshot.empty) {
+  //       console.log('No chats found');
+  //       setChats([]);
+  //       setRefreshing(false);
+  //       return;
+  //     }
+
+  //     const chatData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+
+  //     const updatedChats = await Promise.all(
+  //       chatData.map(async chat => {
+  //         try {
+  //           const messagesQuery = query(
+  //             collection(firestore, `GroupChats/${chat.id}/Messages`),
+  //             orderBy('createdAt', 'desc'),
+  //             limit(1),
+  //           );
+
+  //           const messageSnapshot = await getDocs(messagesQuery);
+  //           const lastMessage =
+  //             messageSnapshot.docs.length > 0
+  //               ? messageSnapshot.docs[0].data()
+  //               : null;
+
+  //           return {...chat, lastMessage};
+  //         } catch (error) {
+  //           console.error(
+  //             `Error fetching messages for chat ${chat.id}:`,
+  //             error,
+  //           );
+  //           return {...chat, lastMessage: null};
+  //         }
+  //       }),
+  //     );
+
+  //     setChats(updatedChats);
+  //   } catch (error) {
+  //     console.error('Error fetching chats:', error);
+  //   } finally {
+  //     setRefreshing(false);
+  //   }
+  // };
+
   const fetchChats = async () => {
     if (!user?.user?.uid) return;
     setRefreshing(true);
@@ -68,6 +123,7 @@ const HomeScreen = () => {
       const updatedChats = await Promise.all(
         chatData.map(async chat => {
           try {
+            // Fetch last message
             const messagesQuery = query(
               collection(firestore, `GroupChats/${chat.id}/Messages`),
               orderBy('createdAt', 'desc'),
@@ -80,13 +136,25 @@ const HomeScreen = () => {
                 ? messageSnapshot.docs[0].data()
                 : null;
 
-            return {...chat, lastMessage};
+            // Fetch unread messages count
+            let unreadCount = 0;
+            if (chat.lastReadTimestamps?.[user.user.uid]) {
+              const unreadMessagesQuery = query(
+                collection(firestore, `GroupChats/${chat.id}/Messages`),
+                where('createdAt', '>', chat.lastReadTimestamps[user.user.uid]),
+              );
+
+              const unreadMessagesSnapshot = await getDocs(unreadMessagesQuery);
+              unreadCount = unreadMessagesSnapshot.size;
+            }
+
+            return {...chat, lastMessage, unreadCount};
           } catch (error) {
             console.error(
               `Error fetching messages for chat ${chat.id}:`,
               error,
             );
-            return {...chat, lastMessage: null};
+            return {...chat, lastMessage: null, unreadCount: 0};
           }
         }),
       );
@@ -251,6 +319,11 @@ const HomeScreen = () => {
                 {item.lastMessage ? item.lastMessage.text : 'No messages yet'}
               </Text>
             </View>
+            {item.unreadCount > 0 && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>{item.unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         )}
         ListEmptyComponent={<Text style={styles.noChats}>No chats found</Text>}
@@ -547,6 +620,23 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     color: '#000',
+    fontWeight: 'bold',
+  },
+  badgeContainer: {
+    backgroundColor: 'red',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 10,
+    top: 10,
+  },
+
+  badgeText: {
+    color: 'white',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });
