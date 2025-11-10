@@ -1,77 +1,77 @@
-import Link from "next/link";
-import { fetchUserCount } from "@/lib/userCount";
-import { UserCounter } from "@/components/UserCounter";
-import { UseCaseTabs } from "@/components/UseCaseTabs";
+import Link from 'next/link';
+import {fetchUserCount} from '@/lib/userCount';
+import {UserCounter} from '@/components/UserCounter';
+import {UseCaseTabs} from '@/components/UseCaseTabs';
 
 const featureColumns = [
   {
-    title: "Stealth Messaging",
+    title: 'Stealth Messaging ',
     description:
-      "Chats sit behind a believable wallpaper experience. Switch to “disguise mode” in a tap and keep curious eyes guessing.",
+      'Chats sit behind a believable wallpaper experience. Switch to “disguise mode” in a tap and keep curious eyes guessing.',
     bullets: [
-      "Launch into HD wallpapers before revealing chats",
-      "On-device PIN lock and inactivity auto-lock",
-      "No-app-name exposure: app title, icon, and copy stay wallpaper-themed",
+      'Launch into HD wallpapers before revealing chats',
+      'On-device PIN lock and inactivity auto-lock',
+      'No-app-name exposure: app title, icon, and copy stay wallpaper-themed',
     ],
   },
   {
-    title: "Disguised Notifications",
+    title: 'Disguised Notifications',
     description:
-      "Push alerts never leak message content. Users see wallpaper updates while you keep end-to-end encrypted conversations flowing.",
+      'Push alerts never leak message content. Users see wallpaper updates while you keep end-to-end encrypted conversations flowing.',
     bullets: [
-      "Randomized wallpaper headlines replace sender + message",
-      "Works in foreground, background, and device-locked states",
-      "Opt-in badges and notification toggles per user preference",
+      'Randomized wallpaper headlines replace sender + message',
+      'Works in foreground, background, and device-locked states',
+      'Opt-in badges and notification toggles per user preference',
     ],
   },
   {
-    title: "Serious Privacy Controls",
+    title: 'Serious Privacy Controls',
     description:
-      "Give communities granular control over what they share and with whom, without sacrificing a smooth messaging experience.",
+      'Give communities granular control over what they share and with whom, without sacrificing a smooth messaging experience.',
     bullets: [
-      "End-to-end encrypted 1:1 and group chats",
-      "Granular read receipts, last seen, profile photo privacy",
-      "Blocklists, group invite rules, and disguised presence",
+      'End-to-end encrypted 1:1 and group chats',
+      'Granular read receipts, last seen, profile photo privacy',
+      'Blocklists, group invite rules, and disguised presence',
     ],
   },
   {
-    title: "Built for Engagement",
+    title: 'Built for Engagement',
     description:
-      "Everything users expect from a modern messenger remains—just hidden in plain sight for safety-focused communities.",
+      'Everything users expect from a modern messenger remains—just hidden in plain sight for safety-focused communities.',
     bullets: [
-      "Pinned messages, replies, lightning-fast search",
-      "Real-time online status + typing indicators",
-      "Optimized Firestore usage for 95% fewer reads",
+      'Pinned messages, replies, lightning-fast search',
+      'Real-time online status + typing indicators',
+      'Optimized Firestore usage for 95% fewer reads',
     ],
   },
 ];
 
 const steps = [
   {
-    title: "Download & Disguise",
-    copy: "Users land on a premium wallpaper library that doubles as the app’s cover story.",
+    title: 'Download & Disguise',
+    copy: 'Users land on a premium wallpaper library that doubles as the app’s cover story.',
   },
   {
-    title: "Unlock Secure Chat",
-    copy: "Authenticate once. A PIN-protected inbox fades in behind the wallpaper gallery.",
+    title: 'Unlock Secure Chat',
+    copy: 'Authenticate once. A PIN-protected inbox fades in behind the wallpaper gallery.',
   },
   {
-    title: "Communicate Freely",
-    copy: "Encrypted chats, groups, and media sharing—without a single exposed notification.",
+    title: 'Communicate Freely',
+    copy: 'Encrypted chats, groups, and media sharing—without a single exposed notification.',
   },
 ];
 
 const proofPoints = [
-  "95% reduction in Firestore reads for cost-efficient scale",
-  "Cross-platform support (Android + iOS) with native-feeling UI",
-  "Production-ready Firebase Auth, Firestore, Storage, FCM stack",
-  "Battle-tested privacy guardrails documented and QA’d",
+  '95% reduction in Firestore reads for cost-efficient scale',
+  'Cross-platform support (Android + iOS) with native-feeling UI',
+  'Production-ready Firebase Auth, Firestore, Storage, FCM stack',
+  'Battle-tested privacy guardrails documented and QA’d',
 ];
 
 export default async function Home() {
   const baseline =
-    Number.parseInt(process.env.NEXT_PUBLIC_USER_COUNT_BASELINE ?? "", 10) || 0;
-  const userCount = await fetchUserCount({ baseline });
+    Number.parseInt(process.env.NEXT_PUBLIC_USER_COUNT_BASELINE ?? '', 10) || 0;
+  const userCount = await fetchUserCount({baseline});
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
@@ -83,9 +83,9 @@ export default async function Home() {
               Private messaging in plain sight
             </span>
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl sm:leading-tight">
-              Wallpaper Chat keeps conversations{" "}
-              <span className="text-sky-400">invisible</span> until you want them
-              seen.
+              Wallpaper Chat keeps conversations{' '}
+              <span className="text-sky-400">invisible</span> until you want
+              them seen.
             </h1>
             <p className="text-lg text-slate-300 sm:text-xl">
               A privacy-first messenger disguised as a wallpaper app. Perfect
@@ -95,14 +95,12 @@ export default async function Home() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <Link
                 href="#download"
-                className="inline-flex items-center justify-center rounded-full bg-sky-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
-              >
+                className="inline-flex items-center justify-center rounded-full bg-sky-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-200">
                 Download Android Build
               </Link>
               <Link
                 href="#contact"
-                className="inline-flex items-center justify-center rounded-full border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-600"
-              >
+                className="inline-flex items-center justify-center rounded-full border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-600">
                 Request a Private Demo
               </Link>
             </div>
@@ -149,11 +147,10 @@ export default async function Home() {
         </section>
 
         <section className="grid gap-10 lg:grid-cols-2">
-          {featureColumns.map((feature) => (
+          {featureColumns.map(feature => (
             <article
               key={feature.title}
-              className="flex flex-col gap-4 rounded-3xl border border-slate-800/70 bg-slate-900/60 p-8 shadow-[0_18px_50px_-35px_rgba(14,116,144,0.7)] backdrop-blur"
-            >
+              className="flex flex-col gap-4 rounded-3xl border border-slate-800/70 bg-slate-900/60 p-8 shadow-[0_18px_50px_-35px_rgba(14,116,144,0.7)] backdrop-blur">
               <div>
                 <h2 className="text-2xl font-semibold text-white">
                   {feature.title}
@@ -163,7 +160,7 @@ export default async function Home() {
                 </p>
               </div>
               <ul className="mt-2 space-y-2 text-sm text-slate-400">
-                {feature.bullets.map((bullet) => (
+                {feature.bullets.map(bullet => (
                   <li key={bullet} className="flex items-start gap-3">
                     <span className="mt-1 inline-flex h-2 w-2 flex-none rounded-full bg-sky-400" />
                     <span>{bullet}</span>
@@ -190,8 +187,7 @@ export default async function Home() {
               {steps.map((step, index) => (
                 <div
                   key={step.title}
-                  className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-6 text-left"
-                >
+                  className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-6 text-left">
                   <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">
                     Step {index + 1}
                   </p>
@@ -218,7 +214,7 @@ export default async function Home() {
               feature—ready for regulated or high-risk audiences.
             </p>
             <ul className="space-y-3 text-sm text-slate-300">
-              {proofPoints.map((point) => (
+              {proofPoints.map(point => (
                 <li key={point} className="flex items-start gap-3">
                   <span className="mt-1 inline-flex h-2.5 w-2.5 flex-none rounded-full bg-emerald-400" />
                   <span>{point}</span>
@@ -258,8 +254,7 @@ export default async function Home() {
 
         <section
           id="download"
-          className="rounded-[32px] border border-slate-800/80 bg-gradient-to-br from-slate-900/80 via-slate-900/50 to-slate-950/80 p-10 text-center shadow-[0_30px_80px_-40px_rgba(8,47,73,0.9)]"
-        >
+          className="rounded-[32px] border border-slate-800/80 bg-gradient-to-br from-slate-900/80 via-slate-900/50 to-slate-950/80 p-10 text-center shadow-[0_30px_80px_-40px_rgba(8,47,73,0.9)]">
           <h2 className="text-3xl font-semibold text-white">
             Launch Wallpaper Chat in your community
           </h2>
@@ -271,14 +266,12 @@ export default async function Home() {
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="https://example.com/wallpaper-chat.apk"
-              className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200"
-            >
+              className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200">
               Get the latest APK
             </Link>
             <Link
               href="https://example.com/docs"
-              className="inline-flex items-center justify-center rounded-full border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-600"
-            >
+              className="inline-flex items-center justify-center rounded-full border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-600">
               Explore technical docs
             </Link>
           </div>
@@ -287,13 +280,10 @@ export default async function Home() {
 
       <footer
         id="contact"
-        className="border-t border-slate-800/80 bg-slate-950/90 py-10"
-      >
+        className="border-t border-slate-800/80 bg-slate-950/90 py-10">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-base font-semibold text-white">
-              Wallpaper Chat
-            </p>
+            <p className="text-base font-semibold text-white">Wallpaper Chat</p>
             <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-500">
               Discreet. Secure. Ready to deploy.
             </p>
@@ -301,8 +291,7 @@ export default async function Home() {
           <div className="flex flex-col gap-2 text-right sm:text-left">
             <Link
               href="mailto:founders@wallpaperchat.app"
-              className="hover:text-slate-200"
-            >
+              className="hover:text-slate-200">
               founders@wallpaperchat.app
             </Link>
             <p>Secure briefings available upon request.</p>

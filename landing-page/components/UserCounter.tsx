@@ -9,7 +9,7 @@ type UserCounterProps = {
 
 export function UserCounter({ target, durationMs = 1300 }: UserCounterProps) {
   const [displayValue, setDisplayValue] = useState(0);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | null>(null);
 
   const formatter = useMemo(
     () => new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }),
@@ -38,8 +38,9 @@ export function UserCounter({ target, durationMs = 1300 }: UserCounterProps) {
     rafRef.current = requestAnimationFrame(animate);
 
     return () => {
-      if (rafRef.current) {
+      if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
     };
 
