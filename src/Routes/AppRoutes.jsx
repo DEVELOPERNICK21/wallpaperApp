@@ -15,6 +15,11 @@ import {
   PasswordScreen,
   ScannerScreen,
 } from '../screens';
+import EnhancedProfileScreen from '../screens/ProfileScreen/EnhancedProfileScreen';
+import EditProfileScreen from '../screens/ProfileScreen/EditProfileScreen';
+import ChangePasswordScreen from '../screens/PasswordScreen/ChangePasswordScreen';
+import NotificationSettingsScreen from '../screens/SettingsScreen/NotificationSettingsScreen';
+import PrivacySecurityScreen from '../screens/SettingsScreen/PrivacySecurityScreen';
 import MyStatusBar from '../component/StatusBar';
 import UserBottomTab from './UserBottomTabNavigator';
 
@@ -74,6 +79,33 @@ const AppRoutes = () => {
       <Stack.Screen
         name={ScreenConstants?.CREATE_GROUP_CHAT}
         component={CreateGroupChat}
+        options={{headerShown: false, title: ''}}
+      />
+
+      {/* Profile & Settings Screens */}
+      <Stack.Screen
+        name={ScreenConstants?.PROFILE_SCREEN}
+        component={EnhancedProfileScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.EDIT_PROFILE_SCREEN}
+        component={EditProfileScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.CHANGE_PASSWORD_SCREEN}
+        component={ChangePasswordScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.NOTIFICATION_SETTINGS_SCREEN}
+        component={NotificationSettingsScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.PRIVACY_SECURITY_SCREEN}
+        component={PrivacySecurityScreen}
         options={{headerShown: false, title: ''}}
       />
     </Stack.Navigator>

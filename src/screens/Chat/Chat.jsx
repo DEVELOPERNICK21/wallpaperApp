@@ -7,39 +7,35 @@ import {
   FlatList,
   StyleSheet,
 } from 'react-native';
-import {
-  getFirestore,
-  collection,
-  doc,
-  addDoc,
-  onSnapshot,
-  orderBy,
-  query,
-} from '@react-native-firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 
 const ChatScreen = ({route}) => {
   const {chatId} = route.params;
-  const firestore = getFirestore();
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
 
   useEffect(() => {
-    const q = query(
-      collection(firestore, `Chats/${chatId}/Messages`),
-      orderBy('createdAt', 'asc'),
-    );
-    const unsubscribe = onSnapshot(q, snapshot => {
-      setMessages(snapshot.docs.map(doc => ({id: doc.id, ...doc.data()})));
-    });
+    const unsubscribe = firestore()
+      .collection('Chats')
+      .doc(chatId)
+      .collection('Messages')
+      .orderBy('createdAt', 'asc')
+      .onSnapshot(snapshot => {
+        setMessages(snapshot.docs.map(doc => ({id: doc.id, ...doc.data()})));
+      });
     return () => unsubscribe();
   }, []);
 
   const sendMessage = async () => {
     if (!messageText) return;
-    await addDoc(collection(firestore, `Chats/${chatId}/Messages`), {
-      text: messageText,
-      createdAt: new Date(),
-    });
+    await firestore()
+      .collection('Chats')
+      .doc(chatId)
+      .collection('Messages')
+      .add({
+        text: messageText,
+        createdAt: new Date(),
+      });
     setMessageText('');
   };
 
@@ -58,7 +54,7 @@ const ChatScreen = ({route}) => {
           placeholder="Type a message"
         />
         <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Text>Send</Text>
+          <Text>Sended</Text>
         </TouchableOpacity>
       </View>
     </View>

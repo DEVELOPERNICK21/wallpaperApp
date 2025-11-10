@@ -13,6 +13,7 @@
     "@gorhom/bottom-sheet": "^5.1.1",
     "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.0.0",
+    "@react-native-camera-roll/camera-roll": "^7.10.2",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-firebase/app": "^21.8.0",
     "@react-native-firebase/auth": "^21.8.0",
@@ -25,7 +26,6 @@
     "axios": "^1.7.7",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
-    "firebase": "^11.3.0",
     "moment": "^2.30.1",
     "moment-timezone": "^0.5.46",
     "react": "18.3.1",
@@ -38,6 +38,7 @@
     "react-native-gifted-chat": "^2.6.5",
     "react-native-image-picker": "^8.0.0",
     "react-native-linear-gradient": "^2.8.3",
+    "react-native-manage-wallpaper": "^1.2.1",
     "react-native-orientation-locker": "^1.7.0",
     "react-native-permissions": "^5.0.1",
     "react-native-pure-jwt": "^3.0.2",
@@ -73,5 +74,6 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
