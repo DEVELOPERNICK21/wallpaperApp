@@ -26,6 +26,12 @@ type ScreenConstantsType = {
   CREATE_GROUP_CHAT: string;
   PASSWORD_SCREEN: string;
   WALLPAPER_SCREEN: string;
+  // Profile & Settings screens
+  PROFILE_SCREEN: string;
+  EDIT_PROFILE_SCREEN: string;
+  CHANGE_PASSWORD_SCREEN: string;
+  NOTIFICATION_SETTINGS_SCREEN: string;
+  PRIVACY_SECURITY_SCREEN: string;
   // add other screen constants as needed...
 };
 
@@ -56,6 +62,12 @@ const ScreenConstants: ScreenConstantsType = {
   CREATE_GROUP_CHAT: 'CREATE_GROUP_CHAT',
   PASSWORD_SCREEN: 'PASSWORD_SCREEN',
   WALLPAPER_SCREEN: 'WALLPAPER_SCREEN',
+  // Profile & Settings screens
+  PROFILE_SCREEN: 'PROFILE_SCREEN',
+  EDIT_PROFILE_SCREEN: 'EDIT_PROFILE_SCREEN',
+  CHANGE_PASSWORD_SCREEN: 'CHANGE_PASSWORD_SCREEN',
+  NOTIFICATION_SETTINGS_SCREEN: 'NOTIFICATION_SETTINGS_SCREEN',
+  PRIVACY_SECURITY_SCREEN: 'PRIVACY_SECURITY_SCREEN',
 };
 
 export default ScreenConstants;

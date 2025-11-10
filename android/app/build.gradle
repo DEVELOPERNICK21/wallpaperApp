@@ -86,6 +86,13 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    
+    // Force newer versions of conflicting dependencies
+    configurations.all {
+        resolutionStrategy {
+            force 'com.github.bumptech.glide:glide:4.16.0'
+        }
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -111,6 +118,9 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    
+    // Force newer Glide version to fix wallpaper package dependency
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

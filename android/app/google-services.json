@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "686723359931",
+    "firebase_url": "https://wallpemsg-default-rtdb.firebaseio.com",
     "project_id": "wallpemsg",
     "storage_bucket": "wallpemsg.firebasestorage.app"
   },

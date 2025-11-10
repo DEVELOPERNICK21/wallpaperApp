@@ -1,109 +1,335 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, {useEffect, useState, useCallback, useRef} from 'react';
 import {
-  Image,
-  Pressable,
   StyleSheet,
   Text,
   View,
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Animated,
+  StatusBar,
+  SafeAreaView,
+  Alert,
+  Image,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
-import {
-  getFirestore,
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-  limit,
-  getDocs,
-} from '@react-native-firebase/firestore';
-import {colors} from '../../assets/color';
+import firestore from '@react-native-firebase/firestore';
 import {height, width} from '../../assets/string';
 import ScreenConstants from '../../Routes/ScreenConstants';
-import images from '../../assets/images';
+import {colors} from '../../assets/color';
 import {setLogOut} from '../../redux/actions/users';
 import {removeUserData} from '../../utils/asynstorage';
 import {RootState} from '../../reduxrf/reducers';
 import auth from '@react-native-firebase/auth';
-import MyStatusBar from '../../component/StatusBar';
 import {UserFace_Icon} from '../../assets/icons';
 
 const HomeScreen = () => {
   const [chats, setChats] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [newMessageChats, setNewMessageChats] = useState(new Set());
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  // Helper function to get initials from name or email
+  const getInitials = (name?: string) => {
+    if (!name) return '?';
+    const names = name.split(' ');
+    if (names.length >= 2) {
+      return (names[0][0] + names[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Debounce timer for auto-refresh
+  const refreshTimerRef = useRef(null);
+
   const user = useSelector((state: RootState) => state.userDetails);
   const dispatch = useDispatch();
   const navigation = useNavigation();
-  const firestore = getFirestore();
 
-  const fetchChats = async () => {
-    if (!user?.user?.uid) return;
-    setRefreshing(true);
+  const userId = user?.user?.uid || authUserId || null;
 
-    try {
-      const q = query(
-        collection(firestore, 'GroupChats'),
-        where('members', 'array-contains', user.user.uid),
-      );
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const floatButtonAnim = useRef(new Animated.Value(0)).current;
+  const modalAnim = useRef(new Animated.Value(0)).current;
+  const deleteModalAnim = useRef(new Animated.Value(0)).current;
 
-      const snapshot = await getDocs(q);
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(floatButtonAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        delay: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [headerAnim, fadeAnim, slideAnim, floatButtonAnim]);
 
-      if (snapshot.empty) {
-        console.log('No chats found');
-        setChats([]);
-        setRefreshing(false);
+  // ⚡ REMOVED: Old duplicate listeners - now handled by optimized GroupChat listener below
+
+  // Clean up new message highlighting when unread counts become 0
+  useEffect(() => {
+    setNewMessageChats(prev => {
+      const newSet = new Set(prev);
+      let hasChanges = false;
+
+      chats.forEach(chat => {
+        if (chat.unreadCount === 0 && newSet.has(chat.id)) {
+          newSet.delete(chat.id);
+          hasChanges = true;
+          console.log(
+            'Removed new message highlight from chat (read):',
+            chat.name,
+          );
+        }
+      });
+
+      return hasChanges ? newSet : prev;
+    });
+  }, [chats]);
+
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged(currentUser => {
+      setAuthUserId(currentUser?.uid ?? null);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchChats = useCallback(
+    async (showSpinner = true) => {
+      if (!userId) {
+        console.log('⚠️ No user UID found, cannot fetch chats');
         return;
       }
 
-      const chatData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+      console.log('🔄 Fetching chats for user:', userId);
 
-      const updatedChats = await Promise.all(
-        chatData.map(async chat => {
-          try {
-            const messagesQuery = query(
-              collection(firestore, `GroupChats/${chat.id}/Messages`),
-              orderBy('createdAt', 'desc'),
-              limit(1),
-            );
+      // Only show spinner for manual refresh, not auto-refresh
+      if (showSpinner) {
+        setRefreshing(true);
+      }
 
-            const messageSnapshot = await getDocs(messagesQuery);
-            const lastMessage =
-              messageSnapshot.docs.length > 0
-                ? messageSnapshot.docs[0].data()
-                : null;
+      try {
+        const snapshot = await firestore()
+          .collection('GroupChats')
+          .where('members', 'array-contains', userId)
+          .get();
 
-            return {...chat, lastMessage};
-          } catch (error) {
-            console.error(
-              `Error fetching messages for chat ${chat.id}:`,
-              error,
-            );
-            return {...chat, lastMessage: null};
+        console.log('✅ Found', snapshot.size, 'chat(s)');
+
+        if (snapshot.empty) {
+          console.log('No chats found');
+          setChats([]);
+          if (showSpinner) setRefreshing(false);
+          return;
+        }
+
+        // ⚡ OPTIMIZED: Process chat data without N+1 queries
+        const processedChats = snapshot.docs.map(doc => {
+          const chatData: any = doc.data();
+
+          // Use lastMessage from the document if available (optimization)
+          const lastMessage = chatData.lastMessage || null;
+
+          // Calculate unread count efficiently
+          let unreadCount = 0;
+          if (chatData.lastReadTimestamps?.[userId]) {
+            // Use the unreadCounts map if available (optimization)
+            if (
+              chatData.unreadCounts &&
+              chatData.unreadCounts[userId] !== undefined
+            ) {
+              unreadCount = chatData.unreadCounts[userId];
+            }
           }
-        }),
+
+          return {
+            id: doc.id,
+            ...chatData,
+            lastMessage,
+            unreadCount,
+          };
+        });
+
+        // Sort chats: pinned first, then by last message timestamp
+        const sortedChats = processedChats.sort((a, b) => {
+          // First, prioritize pinned chats
+          const aPinned = a.pinned || false;
+          const bPinned = b.pinned || false;
+
+          if (aPinned && !bPinned) return -1; // a is pinned, move to top
+          if (!aPinned && bPinned) return 1; // b is pinned, move to top
+
+          // If both pinned or both unpinned, sort by timestamp
+          const aTime =
+            a.lastMessage?.createdAt?.toMillis?.() ||
+            a.createdAt?.toMillis?.() ||
+            0;
+          const bTime =
+            b.lastMessage?.createdAt?.toMillis?.() ||
+            b.createdAt?.toMillis?.() ||
+            0;
+          return bTime - aTime; // Descending order (newest first)
+        });
+
+        setChats(sortedChats);
+        console.log('⚡ Chats processed without sub-queries');
+      } catch (error) {
+        console.error('Error fetching chats:', error);
+      } finally {
+        if (showSpinner) setRefreshing(false);
+      }
+    },
+    [userId],
+  );
+
+  // ⚡ REMOVED: debouncedFetchChats - no longer needed with real-time GroupChat listener
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Initial load on component mount
+  useEffect(() => {
+    if (userId) {
+      console.log('🚀 Initial fetch on mount');
+      fetchChats(false);
+    }
+  }, [userId, fetchChats]); // Only run when user becomes available
+
+  // Real-time listener for chats to detect new chats immediately
+  // ⚡ OPTIMIZED: Listen to GroupChat documents directly for lastMessage updates
+  useEffect(() => {
+    if (!userId) return;
+
+    console.log('👂 Setting up real-time listener for chats');
+
+    const unsubscribe = firestore()
+      .collection('GroupChats')
+      .where('members', 'array-contains', userId)
+      .onSnapshot(
+        snapshot => {
+          console.log('📡 Chat update detected:', snapshot.size, 'chat(s)');
+
+          const currentTime = new Date();
+
+          // Process the updates directly without fetching again
+          const processedChats = snapshot.docs.map(doc => {
+            const chatData: any = doc.data();
+            const lastMessage = chatData.lastMessage || null;
+            const unreadCount = chatData.unreadCounts?.[userId] || 0;
+
+            // Detect NEW messages from others for highlighting
+            if (lastMessage && lastMessage.createdAt) {
+              const messageTime = lastMessage.createdAt.toDate
+                ? lastMessage.createdAt.toDate()
+                : new Date(lastMessage.createdAt.seconds * 1000);
+
+              const timeDifference =
+                currentTime.getTime() - messageTime.getTime();
+
+              // Check if this is a new message (not from current user and very recent)
+              if (
+                lastMessage.senderId !== userId &&
+                timeDifference < 30000 && // Within last 30 seconds
+                timeDifference > 0 && // Message is not in the future
+                unreadCount > 0 // Has unread messages
+              ) {
+                console.log('🎉 NEW MESSAGE DETECTED in chat:', chatData.name);
+
+                // Add to new message chats set
+                setNewMessageChats(prev => {
+                  const newSet = new Set(prev);
+                  newSet.add(doc.id);
+                  return newSet;
+                });
+              }
+            }
+
+            return {
+              id: doc.id,
+              ...chatData,
+              lastMessage,
+              unreadCount,
+            };
+          });
+
+          // Sort chats: pinned first, then by last message timestamp
+          const sortedChats = processedChats.sort((a, b) => {
+            const aPinned = a.pinned || false;
+            const bPinned = b.pinned || false;
+
+            if (aPinned && !bPinned) return -1;
+            if (!aPinned && bPinned) return 1;
+
+            const aTime =
+              a.lastMessage?.createdAt?.toMillis?.() ||
+              a.createdAt?.toMillis?.() ||
+              0;
+            const bTime =
+              b.lastMessage?.createdAt?.toMillis?.() ||
+              b.createdAt?.toMillis?.() ||
+              0;
+            return bTime - aTime;
+          });
+
+          setChats(sortedChats);
+          console.log('⚡ Real-time chat list updated');
+        },
+        error => {
+          console.error('Error in chats listener:', error);
+        },
       );
 
-      setChats(updatedChats);
-    } catch (error) {
-      console.error('Error fetching chats:', error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+    return () => {
+      console.log('🧹 Cleaning up chats listener');
+      unsubscribe();
+    };
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchChats();
-    }, [user]),
+      if (userId) {
+        console.log('🔄 Fetch on screen focus');
+        fetchChats(false); // Silent refresh when returning to screen
+      }
+    }, [fetchChats, userId]),
   );
 
   const onRefresh = useCallback(() => {
-    fetchChats();
-  }, []);
+    console.log('🔄 Manual refresh triggered');
+    fetchChats(true); // true = show spinner for manual refresh
+  }, [fetchChats]);
 
   const signOut = async () => {
     try {
@@ -124,213 +350,1176 @@ const HomeScreen = () => {
       console.error('Chat data is undefined or invalid', chat);
       return;
     }
+
+    // Remove new message highlighting when user opens the chat
+    setNewMessageChats(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(chat.id);
+      console.log('Removed new message highlight from chat:', chat.name);
+      return newSet;
+    });
+
     navigation.navigate(ScreenConstants.CHAT_SCREEN, {
       chatId: chat.id,
       groupNameed: chat.name || 'Group Chat',
     });
   };
 
-  return (
-    <View style={[styles.homeWrapper]}>
-      <MyStatusBar
-        translucent={true}
-        backgroundColor={colors?.primaryColor}
-        barStyle="dark-content"
-      />
+  const deleteGroupChat = async () => {
+    if (!selectedChat) {
+      console.log('No chat selected for deletion');
+      return;
+    }
 
-      <View style={styles.ProfileArea}>
-        <View style={styles?.firstArea}>
-          {/* <View style={styles.profileArea}> */}
-          {/* <Image source={images?.userDummy} style={styles.imageStyling} /> */}
-          <UserFace_Icon height={height / 7} width={width / 4} />
-          {/* </View> */}
-          <Text style={styles.uperText}>
-            {user?.user?.displayName || 'User'}
-          </Text>
-        </View>
-        <Pressable onPress={signOut}>
-          <Text style={styles.uperTextNew}>Sign Out</Text>
-        </Pressable>
-      </View>
+    console.log('Attempting to delete chat:', selectedChat.id);
 
-      {/* Chat List Title */}
-      <Text style={styles.header}>Your Chats</Text>
+    try {
+      // First, try to delete just the group chat document
+      console.log('Deleting group chat document...');
+      await firestore().collection('GroupChats').doc(selectedChat.id).delete();
+      console.log('Group chat document deleted successfully');
 
-      {/* Chat List */}
-      <FlatList
-        data={chats}
-        keyExtractor={item => item.id}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      // Then try to delete messages if they exist
+      try {
+        const messagesSnapshot = await firestore()
+          .collection('GroupChats')
+          .doc(selectedChat.id)
+          .collection('Messages')
+          .get();
+        console.log(`Found ${messagesSnapshot.size} messages to delete`);
+
+        if (messagesSnapshot.size > 0) {
+          const batch = firestore().batch();
+          messagesSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          await batch.commit();
+          console.log('Messages deleted successfully');
         }
-        renderItem={({item}) => (
+      } catch (messageError) {
+        console.log(
+          'No messages to delete or error deleting messages:',
+          messageError,
+        );
+      }
+
+      setShowDeleteModal(false);
+      setSelectedChat(null);
+      fetchChats();
+    } catch (error) {
+      console.error('Error deleting group chat:', error);
+      Alert.alert(
+        'Delete Failed',
+        `Unable to delete the group chat: ${error.message}`,
+        [{text: 'OK'}],
+      );
+    }
+  };
+
+  const togglePinChat = async chat => {
+    if (!chat) return;
+
+    try {
+      const currentPinState = chat.pinned || false;
+      const newPinState = !currentPinState;
+
+      // Update Firestore with pin state
+      await firestore()
+        .collection('GroupChats')
+        .doc(chat.id)
+        .update({
+          pinned: newPinState,
+          pinnedAt: newPinState ? firestore.FieldValue.serverTimestamp() : null,
+        });
+
+      console.log(`Chat ${chat.name} ${newPinState ? 'pinned' : 'unpinned'}`);
+
+      // Refresh chats to update UI
+      fetchChats(false);
+    } catch (error) {
+      console.error('Error toggling pin state:', error);
+      Alert.alert(
+        'Pin Failed',
+        `Unable to ${chat.pinned ? 'unpin' : 'pin'} the chat: ${error.message}`,
+        [{text: 'OK'}],
+      );
+    }
+  };
+
+  const clearChatMessages = async chat => {
+    if (!chat) return;
+
+    try {
+      const messagesSnapshot = await firestore()
+        .collection('GroupChats')
+        .doc(chat.id)
+        .collection('Messages')
+        .get();
+      const batch = firestore().batch();
+
+      messagesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      console.log(`Messages cleared for ${chat.name}`);
+
+      fetchChats();
+    } catch (error) {
+      console.error('Error clearing messages:', error);
+    }
+  };
+
+  const showModal = () => {
+    setShowOptionsModal(true);
+    Animated.timing(modalAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const hideModal = () => {
+    Animated.timing(modalAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowOptionsModal(false);
+    });
+  };
+
+  const showDeleteConfirmationModal = () => {
+    console.log('showDeleteConfirmationModal called');
+    setShowDeleteModal(true);
+    console.log('setShowDeleteModal(true) executed');
+    Animated.timing(deleteModalAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const hideDeleteConfirmationModal = () => {
+    Animated.timing(deleteModalAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowDeleteModal(false);
+    });
+  };
+
+  // Separate component for chat item to properly use hooks
+  const ChatItem = React.memo(
+    ({
+      item,
+      onPress,
+      onLongPress,
+    }: {
+      item: any;
+      onPress: () => void;
+      onLongPress: () => void;
+    }) => {
+      const isUnread = item.unreadCount > 0;
+      const hasLastMessage = item.lastMessage;
+      const isNewMessage = newMessageChats.has(item.id) && isUnread;
+
+      // Animation for unread badge pulse
+      const badgePulse = useRef(new Animated.Value(1)).current;
+
+      useEffect(() => {
+        if (isNewMessage) {
+          const pulse = Animated.loop(
+            Animated.sequence([
+              Animated.timing(badgePulse, {
+                toValue: 1.15,
+                duration: 800,
+                useNativeDriver: true,
+              }),
+              Animated.timing(badgePulse, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+              }),
+            ]),
+          );
+          pulse.start();
+          return () => pulse.stop();
+        } else {
+          badgePulse.setValue(1);
+        }
+      }, [isNewMessage, badgePulse]);
+
+      return (
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [50, 0],
+                }),
+              },
+            ],
+          }}>
           <TouchableOpacity
             style={[
               styles.chatItem,
-              {backgroundColor: item.lastMessage ? '#000' : '#1A1A1A'},
+              {
+                backgroundColor: hasLastMessage ? '#1a1a1a' : '#0f0f0f',
+                borderLeftWidth: isUnread && !isNewMessage ? 5 : 0,
+                borderLeftColor:
+                  isUnread && !isNewMessage ? '#6366f1' : 'transparent',
+                // Enhanced highlighting for new messages
+                ...(isNewMessage && {
+                  backgroundColor: '#1e293b', // Darker slate background
+                  borderWidth: 2,
+                  borderColor: '#3b82f6', // Bright blue border
+                  elevation: 10,
+                  shadowColor: '#3b82f6',
+                  shadowOffset: {width: 0, height: 6},
+                  shadowOpacity: 0.4,
+                  shadowRadius: 10,
+                }),
+                // Subtle elevation for unread (non-new) messages
+                ...(isUnread &&
+                  !isNewMessage && {
+                    backgroundColor: '#1f1f1f',
+                    elevation: 3,
+                    shadowColor: '#6366f1',
+                    shadowOffset: {width: 0, height: 2},
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                  }),
+              },
             ]}
-            onPress={() => openChat(item)}>
-            {/* Circular Group Name Icon */}
-            <View style={styles.chatCircle}>
+            onPress={onPress}
+            onLongPress={onLongPress}
+            activeOpacity={0.7}>
+            {/* New Message Indicator - Top Right Pulse Dot */}
+            {isNewMessage && (
+              <Animated.View
+                style={[
+                  styles.newMessageDot,
+                  {
+                    transform: [{scale: badgePulse}],
+                  },
+                ]}>
+                <View style={styles.newMessageDotInner} />
+              </Animated.View>
+            )}
+
+            <View
+              style={[
+                styles.chatCircle,
+                {
+                  backgroundColor: hasLastMessage ? '#6366f1' : '#374151',
+                  // Blue avatar for new messages
+                  ...(isNewMessage && {
+                    backgroundColor: '#3b82f6', // Bright blue
+                    elevation: 4,
+                    shadowColor: '#3b82f6',
+                    shadowOffset: {width: 0, height: 2},
+                    shadowOpacity: 0.5,
+                    shadowRadius: 4,
+                  }),
+                },
+              ]}>
               <Text style={styles.chatInitial}>
                 {item.name ? item.name.charAt(0).toUpperCase() : '?'}
               </Text>
             </View>
 
-            <View>
-              <Text style={styles.chatText}>{item.name || 'Group Chat'}</Text>
+            <View style={styles.chatContent}>
+              <View style={styles.chatHeader}>
+                <View style={styles.chatNameContainer}>
+                  {item.pinned && <Text style={styles.pinIcon}>📌</Text>}
+                  <Text
+                    style={[
+                      styles.chatText,
+                      isUnread && !isNewMessage && styles.chatTextUnread,
+                      isNewMessage && styles.chatTextNew,
+                    ]}>
+                    {item.name || 'Group Chat'}
+                  </Text>
+                </View>
+                {item.lastMessage && (
+                  <Text
+                    style={[
+                      styles.timeText,
+                      isUnread && !isNewMessage && styles.timeTextUnread,
+                      isNewMessage && styles.timeTextNew,
+                    ]}>
+                    {(() => {
+                      try {
+                        const messageTime =
+                          item.lastMessage.createdAt?.toDate();
+                        if (messageTime && messageTime.getTime) {
+                          return messageTime.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          });
+                        }
+                        return '--:--';
+                      } catch (error) {
+                        console.error('Error formatting message time:', error);
+                        return '--:--';
+                      }
+                    })()}
+                  </Text>
+                )}
+              </View>
+
               <Text
                 style={[
                   styles.lastMessage,
-                  user?.user?.uid &&
-                    !item.lastMessage?.seenBy?.includes(user.user.uid) &&
-                    styles.unreadText,
-                ]}>
+                  isUnread && !isNewMessage && styles.unreadText,
+                  isNewMessage && styles.newMessageText,
+                ]}
+                numberOfLines={2}>
                 {item.lastMessage ? item.lastMessage.text : 'No messages yet'}
               </Text>
             </View>
+
+            {isUnread && (
+              <Animated.View
+                style={[
+                  styles.badgeContainer,
+                  isNewMessage && styles.newBadgeContainer,
+                  isNewMessage && {
+                    transform: [{scale: badgePulse}],
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.badgeText,
+                    isNewMessage && styles.newBadgeText,
+                  ]}>
+                  {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                </Text>
+                {/* Outer glow for new messages */}
+                {isNewMessage && <View style={styles.badgeGlow} />}
+              </Animated.View>
+            )}
           </TouchableOpacity>
-        )}
-        ListEmptyComponent={<Text style={styles.noChats}>No chats found</Text>}
+        </Animated.View>
+      );
+    },
+  );
+
+  // ⚡ OPTIMIZED: Memoize render function with useCallback
+  const renderChatItem = useCallback(
+    ({item}) => (
+      <ChatItem
+        item={item}
+        onPress={() => openChat(item)}
+        onLongPress={() => {
+          setSelectedChat(item);
+          showModal();
+        }}
+      />
+    ),
+    [openChat, showModal],
+  );
+
+  // ⚡ OPTIMIZED: Extract key for better FlatList performance
+  const keyExtractor = useCallback((item: any) => item.id, []);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={colors?.primaryColorSecondary}
       />
 
-      {/* Floating Button */}
-      <Pressable
-        style={styles.FloatButton}
-        onPress={() => navigation.navigate(ScreenConstants?.CREATE_GROUP_CHAT)}>
-        <Text style={styles.FloatText}>+</Text>
-      </Pressable>
-    </View>
+      <View style={styles.homeWrapper}>
+        {/* Header Section */}
+        <Animated.View
+          style={[
+            styles.headerSection,
+            {
+              opacity: headerAnim,
+              transform: [
+                {
+                  translateY: headerAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}>
+          <View style={styles.profileArea}>
+            <TouchableOpacity
+              style={styles.profileInfo}
+              onPress={() =>
+                navigation.navigate(ScreenConstants.PROFILE_SCREEN as never)
+              }
+              activeOpacity={0.8}>
+              <View style={styles.avatarContainer}>
+                {user?.user?.photoURL ? (
+                  <Image
+                    source={{uri: user.user.photoURL}}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarInitials}>
+                      {getInitials(
+                        user?.user?.displayName || user?.user?.email,
+                      )}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.onlineIndicator} />
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>
+                  {user?.user?.displayName ||
+                    user?.user?.email?.split('@')[0] ||
+                    'User'}
+                </Text>
+                <Text style={styles.userStatus}>
+                  <Text style={styles.statusDot}>●</Text> Active now
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={() =>
+                navigation.navigate(ScreenConstants.PROFILE_SCREEN as never)
+              }
+              activeOpacity={0.7}>
+              <Text style={styles.profileButtonIcon}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          <Animated.View
+            style={[
+              styles.headerContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{translateY: slideAnim}],
+              },
+            ]}>
+            <Text style={styles.headerTitle}>Your Conversations</Text>
+            <Text style={styles.headerSubtitle}>
+              {chats.length} {chats.length === 1 ? 'chat' : 'chats'}
+            </Text>
+          </Animated.View>
+
+          {/* Chat List */}
+          <FlatList
+            data={chats}
+            keyExtractor={keyExtractor}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#6366f1"
+                colors={['#6366f1']}
+              />
+            }
+            renderItem={renderChatItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+            // ⚡ PERFORMANCE OPTIMIZATIONS
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={10}
+            windowSize={5}
+            ListEmptyComponent={
+              <Animated.View
+                style={[styles.emptyContainer, {opacity: fadeAnim}]}>
+                <View style={styles.emptyIcon}>
+                  <Text style={styles.emptyIconText}>💬</Text>
+                </View>
+                <Text style={styles.emptyTitle}>No conversations yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  Start a new group chat to begin messaging
+                </Text>
+              </Animated.View>
+            }
+          />
+        </View>
+
+        {/* Floating Action Button */}
+        <Animated.View
+          style={[
+            styles.floatButtonContainer,
+            {
+              transform: [
+                {
+                  scale: floatButtonAnim,
+                },
+              ],
+            },
+          ]}>
+          <TouchableOpacity
+            style={styles.floatButton}
+            onPress={() =>
+              navigation.navigate(ScreenConstants?.CREATE_GROUP_CHAT)
+            }
+            activeOpacity={0.8}>
+            <Text style={styles.floatButtonText}>+</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Options Modal */}
+        {showOptionsModal && (
+          <Animated.View
+            style={[
+              styles.modalOverlay,
+              {
+                opacity: modalAnim,
+              },
+            ]}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              onPress={hideModal}
+              activeOpacity={1}>
+              <Animated.View
+                style={[
+                  styles.modalContainer,
+                  {
+                    transform: [
+                      {
+                        scale: modalAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Chat Options</Text>
+                  <TouchableOpacity
+                    onPress={hideModal}
+                    style={styles.closeButton}>
+                    <Text style={styles.closeButtonText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.optionButton}
+                  onPress={() => {
+                    togglePinChat(selectedChat);
+                    hideModal();
+                  }}
+                  activeOpacity={0.7}>
+                  <Text style={styles.optionIcon}>
+                    {selectedChat?.pinned ? '📌' : '📍'}
+                  </Text>
+                  <Text style={styles.optionText}>
+                    {selectedChat?.pinned ? 'Unpin Chat' : 'Pin Chat'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.optionButton}
+                  onPress={() => {
+                    clearChatMessages(selectedChat);
+                    hideModal();
+                  }}
+                  activeOpacity={0.7}>
+                  <Text style={styles.optionIcon}>🗑️</Text>
+                  <Text style={styles.optionText}>Clear Messages</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.optionButton, styles.deleteOptionButton]}
+                  onPress={() => {
+                    console.log('Delete Group button pressed');
+                    hideModal();
+                    showDeleteConfirmationModal();
+                    // deleteGroupChat();
+                  }}
+                  activeOpacity={0.7}>
+                  <Text style={styles.optionIcon}>⚠️</Text>
+                  <Text style={[styles.optionText, styles.deleteOptionText]}>
+                    Delete Group
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {console.log('showDeleteModal state:', showDeleteModal)}
+        {showDeleteModal && (
+          <Animated.View
+            style={[
+              styles.modalOverlay,
+              {
+                opacity: deleteModalAnim,
+              },
+            ]}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              onPress={hideDeleteConfirmationModal}
+              activeOpacity={1}>
+              <Animated.View
+                style={[
+                  styles.modalContainer,
+                  {
+                    transform: [
+                      {
+                        scale: deleteModalAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Delete Group?</Text>
+                  <TouchableOpacity
+                    onPress={hideDeleteConfirmationModal}
+                    style={styles.closeButton}>
+                    <Text style={styles.closeButtonText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.modalText}>
+                  Are you sure you want to delete "{selectedChat?.name}"? This
+                  action cannot be undone.
+                </Text>
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={hideDeleteConfirmationModal}
+                    activeOpacity={0.7}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={deleteGroupChat}
+                    activeOpacity={0.7}>
+                    <Text style={styles.deleteText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
 export default HomeScreen;
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
   homeWrapper: {
-    height: height,
-    backgroundColor: '#000',
+    flex: 1,
+    backgroundColor: '#0f172a',
   },
 
-  /* Profile Header */
-  ProfileArea: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: colors?.primaryColor,
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    height: height / 7,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+  // Header Section - Enhanced
+  headerSection: {
+    backgroundColor: colors?.primaryColorSecondary,
+    paddingTop: 20,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    elevation: 12,
+    shadowColor: '#6366f1',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(99, 102, 241, 0.15)',
   },
   profileArea: {
-    height: height / 15,
-    width: '20%',
-    // backgroundColor: 'green',
-    borderRadius: width,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    // alignItems: 'center',
-  },
-  firstArea: {
-    width: '75%',
     flexDirection: 'row',
-    // justifyContent: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+  },
+  profileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: '#6366f1',
+    shadowColor: '#6366f1',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  avatarPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#8b5cf6',
+    shadowColor: '#6366f1',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  avatarInitials: {
+    color: '#ffffff',
+    fontSize: 23,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 3,
+    right: 3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#22c55e',
+    borderWidth: 3,
+    borderColor: '#1e293b',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 21,
+    fontWeight: 'bold',
+    color: '#f8fafc',
+    marginBottom: 5,
+    letterSpacing: 0.3,
+  },
+  userStatus: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  imageStyling: {
-    height: height / 20,
-    width: height / 20,
+  statusDot: {
+    color: '#22c55e',
+    fontSize: 11,
+    marginRight: 5,
   },
-  uperText: {
-    fontSize: 18,
-    color: colors?.black,
-    width: '45%',
-    textTransform: 'uppercase',
+  profileButton: {
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(99, 102, 241, 0.4)',
+    minWidth: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6366f1',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  profileButtonIcon: {
+    fontSize: 22,
   },
 
-  /* Chat List */
-  header: {
-    fontSize: 22,
+  // Content Section
+  contentSection: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
-    marginVertical: 10,
+    color: '#f8fafc',
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  listContainer: {
     paddingHorizontal: 15,
-    color: '#333',
+    paddingBottom: 100,
+  },
+
+  // Chat Items
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    marginVertical: 6,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   chatCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.primaryColor,
+    width: 55,
+    height: 55,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
   },
   chatInitial: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: colors.white,
+    color: '#ffffff',
   },
-  chatItem: {
+  chatContent: {
+    flex: 1,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  chatNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    marginVertical: 5,
-    marginHorizontal: 10,
-    borderRadius: 15,
-    elevation: 5,
-    shadowColor: colors?.greyColor,
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
+    flex: 1,
+    gap: 6,
   },
-  chatIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
+  pinIcon: {
+    fontSize: 14,
+    marginRight: 2,
   },
   chatText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors?.white,
+    color: '#f8fafc',
+    flex: 1,
+  },
+  chatTextUnread: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  chatTextNew: {
+    color: '#60a5fa',
+    fontWeight: '900',
+    textShadowColor: 'rgba(59, 130, 246, 0.5)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 3,
+  },
+  timeText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  timeTextUnread: {
+    color: '#94a3b8',
+    fontWeight: '700',
+  },
+  timeTextNew: {
+    color: '#93c5fd',
+    fontWeight: '800',
   },
   lastMessage: {
     fontSize: 14,
-    color: colors?.greyColor,
+    color: '#94a3b8',
+    lineHeight: 20,
   },
   unreadText: {
+    color: '#f8fafc',
+    fontWeight: '700',
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#007bff',
+  },
+  newMessageText: {
+    color: '#93c5fd',
+    fontWeight: '700',
+    fontSize: 14,
+    textShadowColor: 'rgba(59, 130, 246, 0.3)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 2,
   },
 
-  /* No Chats Found */
-  noChats: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#777',
-    marginTop: 20,
+  // Badge - Enhanced Design
+  badgeContainer: {
+    backgroundColor: '#ef4444',
+    borderRadius: 16,
+    minWidth: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    elevation: 4,
+    shadowColor: '#ef4444',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 
-  /* Floating Button */
-  FloatButton: {
+  // New message badge styles
+  newBadgeContainer: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#60a5fa',
+    minWidth: 32,
+    height: 32,
+    elevation: 8,
+    shadowColor: '#3b82f6',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+  },
+  newBadgeText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 2,
+  },
+  badgeGlow: {
     position: 'absolute',
-    alignSelf: 'center',
-    bottom: width / 15,
-    backgroundColor: colors?.primaryColor,
-    borderRadius: width,
-    paddingVertical: 15,
-    paddingHorizontal: 25,
+    width: '130%',
+    height: '130%',
+    borderRadius: 20,
+    backgroundColor: '#3b82f6',
+    opacity: 0.3,
+    zIndex: -1,
+  },
+
+  // Empty State
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 6,
+    marginBottom: 20,
   },
-  FloatText: {
-    fontSize: 22,
+  emptyIconText: {
+    fontSize: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: colors?.white,
+    color: '#f8fafc',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+
+  // Floating Button
+  floatButtonContainer: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+  },
+  floatButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#6366f1',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  floatButtonText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+
+  // Modals
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 0,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#f8fafc',
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#374151',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#94a3b8',
+    fontWeight: 'bold',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#94a3b8',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    lineHeight: 24,
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  optionIcon: {
+    fontSize: 20,
+    marginRight: 15,
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#f8fafc',
+    fontWeight: '500',
+  },
+  deleteOptionButton: {
+    borderBottomWidth: 0,
+  },
+  deleteOptionText: {
+    color: '#ef4444',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 15,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#374151',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 16,
+    color: '#f8fafc',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  deleteText: {
+    fontSize: 16,
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+
+  // New Message Dot Indicator
+  // New message indicator dot (top right)
+  newMessageDot: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  newMessageDotInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#10b981', // Green color for new indicator
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    elevation: 6,
+    shadowColor: '#10b981',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
 });
