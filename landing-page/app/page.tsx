@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import {fetchUserCount} from '@/lib/userCount';
+import {fetchUsageStats} from '@/lib/usageStats';
 import {UserCounter} from '@/components/UserCounter';
+import {UsageStats} from '@/components/UsageStats';
 import {UseCaseTabs} from '@/components/UseCaseTabs';
 
 const featureColumns = [
@@ -72,6 +74,7 @@ export default async function Home() {
   const baseline =
     Number.parseInt(process.env.NEXT_PUBLIC_USER_COUNT_BASELINE ?? '', 10) || 0;
   const userCount = await fetchUserCount({baseline});
+  const usageStats = await fetchUsageStats();
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
@@ -130,6 +133,22 @@ export default async function Home() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="space-y-6">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+              Growing community, active conversations
+            </h2>
+            <p className="max-w-2xl text-base text-slate-300">
+              See how much activity is happening on Wallpaper Chat. Real-time statistics show the scale of secure communication happening right now.
+            </p>
+          </div>
+          <UsageStats 
+            users={usageStats.users} 
+            chats={usageStats.chats} 
+            messages={usageStats.messages} 
+          />
         </section>
 
         <section className="space-y-8">

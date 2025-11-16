@@ -44,8 +44,6 @@ const ChatScreen = ({route, navigation}) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
-  const [showReactionsModal, setShowReactionsModal] = useState(false);
-  const [reactingMessage, setReactingMessage] = useState(null);
   const [showSeenByModal, setShowSeenByModal] = useState(false);
   const [seenByMessage, setSeenByMessage] = useState(null);
   const [seenByUsers, setSeenByUsers] = useState([]);
@@ -272,19 +270,45 @@ const ChatScreen = ({route, navigation}) => {
       .doc(chatId)
       .collection('Messages')
       .orderBy('createdAt', 'asc')
-      .onSnapshot(snapshot => {
-        const newMessages = snapshot.docs
-          .map(doc => ({
+      .onSnapshot(async snapshot => {
+        // Get chat type to determine if we should decrypt
+        let chatType = null;
+        let isDirectChat = false;
+        
+        try {
+          const chatDoc = await firestore()
+            .collection('GroupChats')
+            .doc(chatId)
+            .get();
+          
+          if (chatDoc.exists) {
+            const chatData = chatDoc.data();
+            chatType = chatData?.type;
+            isDirectChat = chatType === 'direct' && chatData?.members?.length === 2;
+          }
+        } catch (error) {
+          console.error('❌ Error fetching chat type:', error);
+        }
+
+        // Get messages as plain text (encryption disabled)
+        const decryptedMessages = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
             id: doc.id,
-            ...doc.data(),
-          }))
-          // Filter out messages deleted by current user (Delete for Me)
-          .filter(msg => {
-            const deletedForUsers = msg.deletedForUsers || [];
-            return !deletedForUsers.includes(currentUser.uid);
-          });
-        setMessages(newMessages);
-        markMessagesAsSeen(newMessages);
+            ...data,
+            // Use text field, fallback to encryptedText if text is empty (for old encrypted messages)
+            text: data.text || (data.encryptedText ? '[Encrypted message - decryption disabled]' : ''),
+          };
+        });
+
+        // Filter out messages deleted by current user (Delete for Me)
+        const filteredMessages = decryptedMessages.filter(msg => {
+          const deletedForUsers = msg.deletedForUsers || [];
+          return !deletedForUsers.includes(currentUser.uid);
+        });
+
+        setMessages(filteredMessages);
+        markMessagesAsSeen(filteredMessages);
       });
 
     // Listen for Typing Status
@@ -1230,12 +1254,17 @@ const ChatScreen = ({route, navigation}) => {
       return;
     }
 
-    const messageRef = await firestore()
-      .collection('GroupChats')
-      .doc(chatId)
-      .collection('Messages')
-      .add({
-        text: messageText,
+    try {
+      // Get chat data to determine if it's a direct chat
+      const chatDoc = await firestore()
+        .collection('GroupChats')
+        .doc(chatId)
+        .get();
+      
+      const chatData = chatDoc.data();
+      const isDirectChat = chatData?.type === 'direct' && chatData?.members?.length === 2;
+
+      let messageData = {
         senderId: currentUser.uid,
         senderName: currentUser.displayName || 'Unknown',
         createdAt: firestore.FieldValue.serverTimestamp(),
@@ -1247,32 +1276,42 @@ const ChatScreen = ({route, navigation}) => {
               sender: replyMessage.senderName,
             }
           : null,
-      });
+      };
 
-    const sentMessageText = messageText; // Store before clearing
-    setMessageText('');
-    setReplyMessage(null);
+      // Send message as plain text (encryption disabled)
+      messageData.text = messageText;
 
-    // ⚡ PERFORMANCE OPTIMIZATION: Update GroupChat with lastMessage and unreadCounts
-    try {
-      const groupDoc = await firestore()
+      // Send message to Firestore
+      const messageRef = await firestore()
         .collection('GroupChats')
         .doc(chatId)
-        .get();
+        .collection('Messages')
+        .add(messageData);
 
-      if (groupDoc.exists) {
-        const groupData = groupDoc.data();
-        const members = groupData.members || [];
+      const sentMessageText = messageText; // Store before clearing
+      setMessageText('');
+      setReplyMessage(null);
 
-        // Prepare lastMessage object for quick access in HomeScreen
-        // Use Timestamp.now() instead of serverTimestamp() so it's immediately available
-        const now = firestore.Timestamp.now();
-        const lastMessageData = {
-          text: sentMessageText,
-          senderId: currentUser.uid,
-          senderName: currentUser.displayName || 'Unknown',
-          createdAt: now,
-        };
+      // ⚡ PERFORMANCE OPTIMIZATION: Update GroupChat with lastMessage and unreadCounts
+      try {
+        const groupDoc = await firestore()
+          .collection('GroupChats')
+          .doc(chatId)
+          .get();
+
+        if (groupDoc.exists) {
+          const groupData = groupDoc.data();
+          const members = groupData.members || [];
+
+          // Prepare lastMessage object for quick access in HomeScreen
+          // Use Timestamp.now() instead of serverTimestamp() so it's immediately available
+          const now = firestore.Timestamp.now();
+          const lastMessageData = {
+            text: sentMessageText,
+            senderId: currentUser.uid,
+            senderName: currentUser.displayName || 'Unknown',
+            createdAt: now,
+          };
 
         // Calculate new unread counts for all members except sender
         const unreadCounts = {};
@@ -1320,6 +1359,13 @@ const ChatScreen = ({route, navigation}) => {
     } catch (error) {
       console.error('Error updating GroupChat metadata:', error);
       // Don't fail the message send if metadata update fails
+    }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert(
+        'Error',
+        'Failed to send message. Please try again.'
+      );
     }
   };
 
