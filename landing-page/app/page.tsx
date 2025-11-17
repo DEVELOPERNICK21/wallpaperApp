@@ -97,7 +97,8 @@ export default async function Home() {
             </p>
             <div className="flex flex-col gap-4 sm:flex-row">
               <Link
-                href="#download"
+                href="/wallpaper-chat.apk"
+                download="wallpaper-chat.apk"
                 className="inline-flex items-center justify-center rounded-full bg-sky-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-200">
                 Download Android Build
               </Link>
@@ -141,13 +142,15 @@ export default async function Home() {
               Growing community, active conversations
             </h2>
             <p className="max-w-2xl text-base text-slate-300">
-              See how much activity is happening on Wallpaper Chat. Real-time statistics show the scale of secure communication happening right now.
+              See how much activity is happening on Wallpaper Chat. Real-time
+              statistics show the scale of secure communication happening right
+              now.
             </p>
           </div>
-          <UsageStats 
-            users={usageStats.users} 
-            chats={usageStats.chats} 
-            messages={usageStats.messages} 
+          <UsageStats
+            users={usageStats.users}
+            chats={usageStats.chats}
+            messages={usageStats.messages}
           />
         </section>
 
@@ -284,7 +287,8 @@ export default async function Home() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="https://example.com/wallpaper-chat.apk"
+              href="/wallpaper-chat.apk"
+              download="wallpaper-chat.apk"
               className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200">
               Get the latest APK
             </Link>

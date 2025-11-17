@@ -6,6 +6,15 @@
 // This is required for tweetnacl and other crypto libraries to work in React Native
 import 'react-native-get-random-values';
 
+// Suppress React Native Firebase v22 migration deprecation warnings
+// These warnings are informational - the namespaced API still works in v21
+// Will migrate to v22 modular API in a future update
+if (typeof globalThis !== 'undefined') {
+  globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+} else if (typeof global !== 'undefined') {
+  global.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+}
+
 import {AppRegistry, LogBox, Text} from 'react-native';
 import App from './App';
 import {name as appName} from './app.json';

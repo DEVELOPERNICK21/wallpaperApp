@@ -167,9 +167,16 @@ const EnhancedProfileScreen = () => {
         style: 'destructive',
         onPress: async () => {
           try {
+            const currentUser = auth().currentUser;
             await auth().signOut();
             await removeUserData();
             dispatch(setLogOut());
+            
+            // Reset navigation to login screen
+            navigation.reset({
+              index: 0,
+              routes: [{name: ScreenConstants.LOGIN_SCREEN}],
+            });
           } catch (error) {
             console.error('Logout error:', error);
             Alert.alert('Error', 'Failed to logout. Please try again.');

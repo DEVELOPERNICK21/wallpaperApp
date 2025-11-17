@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef, useCallback} from 'react';
+import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import {launchImageLibrary} from 'react-native-image-picker';
 import {width, height} from '../../assets/string';
 import fonts from '../../assets/fonts';
 import {presenceTracker, formatLastSeen} from '../../utils/presenceTracker';
+import AIMessageService, {MESSAGE_STYLES} from '../../services/AIMessageService';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -69,7 +70,13 @@ const ChatScreen = ({route, navigation}) => {
     isOnline: false,
     lastSeen: null,
   });
+  const [showStyleSelector, setShowStyleSelector] = useState(false);
+  const [isRephrasing, setIsRephrasing] = useState(false);
   const flatListRef = useRef(null);
+  // Throttle snapshot updates refs (must be at top level)
+  const snapshotUpdateTimeoutRef = useRef(null);
+  const pendingSnapshotRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   // Helper function to get initials for avatar
   const getInitials = name => {
@@ -184,6 +191,70 @@ const ChatScreen = ({route, navigation}) => {
       return;
     }
 
+    // Function to update chat name based on chat data
+    const updateChatName = async (data) => {
+      console.log('🔍 Updating chat name. Chat data:', {
+        type: data.type,
+        members: data.members,
+        membersLength: data.members?.length,
+        storedName: data.name,
+        currentUserId: currentUser.uid,
+      });
+
+      // Check if it's a direct chat (either explicitly marked or has exactly 2 members)
+      const isDirectChat = 
+        (data.type === 'direct' || (!data.type && data.members?.length === 2)) &&
+        data.members && 
+        data.members.length === 2;
+
+      if (isDirectChat) {
+        // Find the other user's ID (not the current user)
+        const otherUserId = data.members.find(
+          memberId => memberId !== currentUser.uid
+        );
+        
+        console.log('👤 Direct chat detected. Other user ID:', otherUserId);
+        
+        if (otherUserId) {
+          try {
+            // Fetch the other user's name from Users collection
+            const otherUserDoc = await firestore()
+              .collection('Users')
+              .doc(otherUserId)
+              .get();
+            
+            if (otherUserDoc.exists) {
+              const otherUserData = otherUserDoc.data();
+              // Use displayName, name, or email as fallback
+              const otherUserName = 
+                otherUserData.displayName || 
+                otherUserData.name || 
+                otherUserData.email?.split('@')[0] || 
+                'Unknown User';
+              
+              console.log('✅ Setting chat name to other user:', otherUserName);
+              setGroupName(otherUserName);
+            } else {
+              console.warn('⚠️ Other user document not found, using stored name');
+              // Fallback to stored name if user doc doesn't exist
+              setGroupName(data.name || 'Unknown User');
+            }
+          } catch (userError) {
+            console.error('❌ Error fetching other user name:', userError);
+            // Fallback to stored name
+            setGroupName(data.name || 'Unknown User');
+          }
+        } else {
+          console.warn('⚠️ Could not find other user ID');
+          setGroupName(data.name || 'Direct Chat');
+        }
+      } else {
+        // For group chats, use the stored name
+        console.log('👥 Group chat detected. Using stored name:', data.name);
+        setGroupName(data.name || 'Group Chat');
+      }
+    };
+
     // Fetch Group Name and Data
     const fetchGroupName = async () => {
       try {
@@ -194,8 +265,8 @@ const ChatScreen = ({route, navigation}) => {
           .get();
         if (groupDoc.exists) {
           const data = groupDoc.data();
-          setGroupName(data.name);
           setGroupData(data);
+          await updateChatName(data);
         } else {
           setGroupName('Group Chat');
         }
@@ -209,9 +280,29 @@ const ChatScreen = ({route, navigation}) => {
 
     fetchGroupName();
 
+    // Listen for chat data changes in real-time (to update name when someone starts chatting with you)
+    const unsubscribeChatData = firestore()
+      .collection('GroupChats')
+      .doc(chatId)
+      .onSnapshot(
+        snapshot => {
+          if (snapshot.exists) {
+            const data = snapshot.data();
+            setGroupData(data);
+            // Update chat name whenever chat data changes
+            updateChatName(data);
+          }
+        },
+        error => {
+          console.error('Error listening to chat data:', error);
+        }
+      );
+
     // Listen for Pinned Messages
     let unsubscribePinned;
     try {
+      // Using namespaced API (still supported in v21)
+      // Note: Deprecation warning is for future v22 migration
       unsubscribePinned = firestore()
         .collection('GroupChats')
         .doc(chatId)
@@ -264,71 +355,148 @@ const ChatScreen = ({route, navigation}) => {
       unsubscribePinned = () => {}; // No-op function
     }
 
-    // Listen for Messages
+    // Process a single message (simplified - no encryption)
+    const processMessage = (doc) => {
+      const data = doc.data();
+      const messageId = doc.id;
+      
+      // Return plain text message
+      return {
+        id: messageId,
+        ...data,
+        text: data.text || data.encryptedText || '', // Support both encryptedText (old messages) and text
+      };
+    };
+
+    // Process snapshot update (throttled)
+    const processSnapshotUpdate = (snapshot) => {
+      // Clear any pending timeout
+      if (snapshotUpdateTimeoutRef.current) {
+        clearTimeout(snapshotUpdateTimeoutRef.current);
+      }
+      
+      // Store the latest snapshot
+      pendingSnapshotRef.current = snapshot;
+      
+      // Throttle updates to max once per 100ms
+      snapshotUpdateTimeoutRef.current = setTimeout(() => {
+        if (!pendingSnapshotRef.current) return;
+        
+        const snapshotToProcess = pendingSnapshotRef.current;
+        pendingSnapshotRef.current = null;
+        
+        // Process messages (no encryption/decryption needed)
+        const processedMessages = snapshotToProcess.docs.map(doc => processMessage(doc));
+
+        // Filter out messages deleted by current user (Delete for Me)
+        const filteredMessages = processedMessages.filter(msg => {
+          const deletedForUsers = msg.deletedForUsers || [];
+          return !deletedForUsers.includes(currentUser.uid);
+        });
+        
+        // Use requestIdleCallback if available, otherwise requestAnimationFrame
+        const scheduleUpdate = (typeof requestIdleCallback !== 'undefined') 
+          ? requestIdleCallback 
+          : requestAnimationFrame;
+        
+        scheduleUpdate(() => {
+          setMessages(prevMessages => {
+            // Quick check: if messages haven't changed, don't update
+            if (prevMessages.length === filteredMessages.length) {
+              let hasChanges = false;
+              for (let idx = 0; idx < filteredMessages.length; idx++) {
+                const msg = filteredMessages[idx];
+                const prev = prevMessages[idx];
+                if (!prev || prev.id !== msg.id || prev.text !== msg.text) {
+                  hasChanges = true;
+                  break;
+                }
+              }
+              if (!hasChanges) {
+                return prevMessages;
+              }
+            }
+
+            // Keep optimistic messages that aren't in Firestore yet
+            const existingIds = new Set(filteredMessages.map(msg => msg.id));
+            const optimisticMessages = prevMessages.filter(
+              msg => !existingIds.has(msg.id) && msg.senderId === currentUser.uid
+            );
+            
+            // Pre-calculate timestamps for faster sorting
+            const messagesWithTimestamps = filteredMessages.map(msg => ({
+              ...msg,
+              _sortTime: msg.createdAt?.toMillis?.() || msg.createdAt?.seconds * 1000 || 0
+            }));
+            
+            const optimisticWithTimestamps = optimisticMessages.map(msg => ({
+              ...msg,
+              _sortTime: msg.createdAt?.toMillis?.() || msg.createdAt?.seconds * 1000 || 0
+            }));
+            
+            // Combine and sort by pre-calculated timestamp
+            const allMessages = [...messagesWithTimestamps, ...optimisticWithTimestamps];
+            allMessages.sort((a, b) => a._sortTime - b._sortTime);
+            
+            // Remove temporary sort property
+            return allMessages.map(({_sortTime, ...msg}) => msg);
+          });
+        });
+        
+        // Mark messages as seen (non-blocking, debounced)
+        if (typeof requestIdleCallback !== 'undefined') {
+          requestIdleCallback(() => {
+            markMessagesAsSeen(filteredMessages);
+          });
+        } else {
+          setTimeout(() => markMessagesAsSeen(filteredMessages), 0);
+        }
+      }, 100);
+    };
+
+    // Listen for Messages with ultra-optimized processing
     const unsubscribe = firestore()
       .collection('GroupChats')
       .doc(chatId)
       .collection('Messages')
       .orderBy('createdAt', 'asc')
-      .onSnapshot(async snapshot => {
-        // Get chat type to determine if we should decrypt
-        let chatType = null;
-        let isDirectChat = false;
-        
-        try {
-          const chatDoc = await firestore()
-            .collection('GroupChats')
-            .doc(chatId)
-            .get();
-          
-          if (chatDoc.exists) {
-            const chatData = chatDoc.data();
-            chatType = chatData?.type;
-            isDirectChat = chatType === 'direct' && chatData?.members?.length === 2;
-          }
-        } catch (error) {
-          console.error('❌ Error fetching chat type:', error);
-        }
+      .onSnapshot(processSnapshotUpdate);
 
-        // Get messages as plain text (encryption disabled)
-        const decryptedMessages = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            // Use text field, fallback to encryptedText if text is empty (for old encrypted messages)
-            text: data.text || (data.encryptedText ? '[Encrypted message - decryption disabled]' : ''),
-          };
-        });
-
-        // Filter out messages deleted by current user (Delete for Me)
-        const filteredMessages = decryptedMessages.filter(msg => {
-          const deletedForUsers = msg.deletedForUsers || [];
-          return !deletedForUsers.includes(currentUser.uid);
-        });
-
-        setMessages(filteredMessages);
-        markMessagesAsSeen(filteredMessages);
-      });
-
-    // Listen for Typing Status
+    // Listen for Typing Status (throttled)
     const unsubscribeTyping = firestore()
       .collection('GroupChats')
       .doc(chatId)
       .onSnapshot(snapshot => {
-        const data = snapshot.data();
-        if (data?.typingUser && data.typingUser !== currentUser.displayName) {
-          setTypingUser(data.typingUser);
-          setIsTyping(true);
-          fadeInTyping();
-        } else {
-          fadeOutTyping();
+        // Throttle typing updates
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
         }
+        
+        typingTimeoutRef.current = setTimeout(() => {
+          const data = snapshot.data();
+          if (data?.typingUser && data.typingUser !== currentUser.displayName) {
+            setTypingUser(data.typingUser);
+            setIsTyping(true);
+            fadeInTyping();
+          } else {
+            fadeOutTyping();
+          }
+        }, 300);
       });
 
     return () => {
+      // Cleanup timeouts
+      if (snapshotUpdateTimeoutRef.current) {
+        clearTimeout(snapshotUpdateTimeoutRef.current);
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
       unsubscribe();
       unsubscribeTyping();
+      if (unsubscribeChatData) {
+        unsubscribeChatData();
+      }
       if (unsubscribePinned) {
         unsubscribePinned();
       }
@@ -543,6 +711,33 @@ const ChatScreen = ({route, navigation}) => {
     setSeenByMessage(message);
     await fetchSeenByUsers(message);
     setShowSeenByModal(true);
+  };
+
+  // Handle AI message rephrasing
+  const handleRephraseMessage = async (style) => {
+    if (!messageText.trim()) {
+      Alert.alert('No Message', 'Please type a message first');
+      return;
+    }
+
+    setIsRephrasing(true);
+    setShowStyleSelector(false);
+
+    try {
+      const rephrasedMessage = await AIMessageService.rephraseMessage(
+        messageText,
+        style
+      );
+      setMessageText(rephrasedMessage);
+    } catch (error) {
+      console.error('Error rephrasing message:', error);
+      Alert.alert(
+        'Rephrasing Failed',
+        error?.message || 'Failed to rephrase message. Please try again.'
+      );
+    } finally {
+      setIsRephrasing(false);
+    }
   };
 
   const handleTyping = async text => {
@@ -1254,21 +1449,14 @@ const ChatScreen = ({route, navigation}) => {
       return;
     }
 
-    try {
-      // Get chat data to determine if it's a direct chat
-      const chatDoc = await firestore()
-        .collection('GroupChats')
-        .doc(chatId)
-        .get();
-      
-      const chatData = chatDoc.data();
-      const isDirectChat = chatData?.type === 'direct' && chatData?.members?.length === 2;
-
+      try {
       let messageData = {
         senderId: currentUser.uid,
         senderName: currentUser.displayName || 'Unknown',
+        text: messageText,
         createdAt: firestore.FieldValue.serverTimestamp(),
         seenBy: [currentUser.uid],
+        isEncrypted: false,
         replyTo: replyMessage
           ? {
               id: replyMessage.id,
@@ -1277,18 +1465,14 @@ const ChatScreen = ({route, navigation}) => {
             }
           : null,
       };
-
-      // Send message as plain text (encryption disabled)
-      messageData.text = messageText;
-
+      
       // Send message to Firestore
-      const messageRef = await firestore()
+      await firestore()
         .collection('GroupChats')
         .doc(chatId)
         .collection('Messages')
         .add(messageData);
-
-      const sentMessageText = messageText; // Store before clearing
+      
       setMessageText('');
       setReplyMessage(null);
 
@@ -1306,66 +1490,68 @@ const ChatScreen = ({route, navigation}) => {
           // Prepare lastMessage object for quick access in HomeScreen
           // Use Timestamp.now() instead of serverTimestamp() so it's immediately available
           const now = firestore.Timestamp.now();
+          const lastMessageText = messageText;
           const lastMessageData = {
-            text: sentMessageText,
+            text: lastMessageText,
             senderId: currentUser.uid,
             senderName: currentUser.displayName || 'Unknown',
             createdAt: now,
           };
 
-        // Calculate new unread counts for all members except sender
-        const unreadCounts = {};
-        members.forEach(memberId => {
-          if (memberId !== currentUser.uid) {
-            // Increment unread count for other members
-            const currentCount = groupData.unreadCounts?.[memberId] || 0;
-            unreadCounts[`unreadCounts.${memberId}`] = currentCount + 1;
-          } else {
-            // Reset count for sender
-            unreadCounts[`unreadCounts.${memberId}`] = 0;
-          }
-        });
-
-        // Update GroupChat document with optimized fields
-        await firestore()
-          .collection('GroupChats')
-          .doc(chatId)
-          .update({
-            lastMessage: lastMessageData,
-            typingUser: '',
-            ...unreadCounts,
+          // Calculate new unread counts for all members except sender
+          const unreadCounts = {};
+          members.forEach(memberId => {
+            if (memberId !== currentUser.uid) {
+              // Increment unread count for other members
+              const currentCount = groupData.unreadCounts?.[memberId] || 0;
+              unreadCounts[`unreadCounts.${memberId}`] = currentCount + 1;
+            } else {
+              // Reset count for sender
+              unreadCounts[`unreadCounts.${memberId}`] = 0;
+            }
           });
 
-        console.log('⚡ Updated GroupChat with lastMessage and unreadCounts');
+          // Update GroupChat document with optimized fields
+          await firestore()
+            .collection('GroupChats')
+            .doc(chatId)
+            .update({
+              lastMessage: lastMessageData,
+              typingUser: '',
+              ...unreadCounts,
+            });
 
-        // Send push notifications
-        const tokens = [];
-        for (const memberId of members) {
-          if (memberId !== currentUser.uid) {
-            const userDoc = await firestore()
-              .collection('users')
-              .doc(memberId)
-              .get();
-            if (userDoc.exists && userDoc.data().fcmToken) {
-              tokens.push(userDoc.data().fcmToken);
+          console.log('⚡ Updated GroupChat with lastMessage and unreadCounts');
+
+          // Send push notifications
+          const tokens = [];
+          for (const memberId of members) {
+            if (memberId !== currentUser.uid) {
+              const userDoc = await firestore()
+                .collection('users')
+                .doc(memberId)
+                .get();
+              if (userDoc.exists && userDoc.data().fcmToken) {
+                tokens.push(userDoc.data().fcmToken);
+              }
             }
           }
-        }
 
-        for (const token of tokens) {
-          sendPushNotification(token, currentUser.displayName, sentMessageText);
+          for (const token of tokens) {
+            sendPushNotification(
+              token,
+              currentUser.displayName,
+              sentMessageText,
+            );
+          }
         }
+      } catch (error) {
+        console.error('Error updating GroupChat metadata:', error);
+        // Don't fail the message send if metadata update fails
       }
     } catch (error) {
-      console.error('Error updating GroupChat metadata:', error);
-      // Don't fail the message send if metadata update fails
-    }
-    } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert(
-        'Error',
-        'Failed to send message. Please try again.'
-      );
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };
 
@@ -1402,13 +1588,14 @@ const ChatScreen = ({route, navigation}) => {
     Alert.alert('Copied', 'Message copied to clipboard');
   };
 
-  const renderMessage = ({item, index}) => {
+  // Memoize renderMessage to prevent unnecessary re-renders
+  const renderMessage = useCallback(({item, index}) => {
     const isCurrentUser = item.senderId === currentUser.uid;
     const previousMessage =
       index < messages.length - 1 ? messages[index + 1] : null;
     const showDateSeparator = shouldShowDateSeparator(item, previousMessage);
 
-    // Safe timestamp handling
+    // Safe timestamp handling (memoized computation)
     let messageTime = 'Sending...';
     let messageDate = null;
     if (item.createdAt) {
@@ -1585,7 +1772,7 @@ const ChatScreen = ({route, navigation}) => {
         </Animated.View>
       </View>
     );
-  };
+  }, [messages, currentUser.uid, searchQuery]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1629,7 +1816,9 @@ const ChatScreen = ({route, navigation}) => {
               (groupData.members && groupData.members.length === 2)
             }>
             <Text style={styles.groupName}>
-              {groupNameed || groupName || 'Group Chat'}
+              {/* For direct chats, always use computed groupName (other person's name) */}
+              {/* For group chats, use computed groupName or fallback to groupNameed */}
+              {groupName || (!groupData?.type && !(groupData?.members?.length === 2) ? groupNameed : null) || 'Group Chat'}
             </Text>
             <View style={styles.onlineStatusContainer}>
               {groupData &&
@@ -1919,10 +2108,22 @@ const ChatScreen = ({route, navigation}) => {
             ref={flatListRef}
             data={messages}
             inverted={false}
-            onContentSizeChange={() =>
-              flatListRef.current?.scrollToEnd({animated: true})
-            }
-            onLayout={() => flatListRef.current?.scrollToEnd({animated: true})}
+            onContentSizeChange={() => {
+              // Throttle scroll to end to reduce jitter
+              if (flatListRef.current) {
+                requestAnimationFrame(() => {
+                  flatListRef.current?.scrollToEnd({animated: false});
+                });
+              }
+            }}
+            onLayout={() => {
+              // Only scroll on initial layout
+              if (messages.length > 0) {
+                requestAnimationFrame(() => {
+                  flatListRef.current?.scrollToEnd({animated: false});
+                });
+              }
+            }}
             onScrollToIndexFailed={info => {
               const wait = new Promise(resolve => setTimeout(resolve, 500));
               wait.then(() => {
@@ -1939,10 +2140,14 @@ const ChatScreen = ({route, navigation}) => {
             contentContainerStyle={styles.messagesContainer}
             // ⚡ PERFORMANCE OPTIMIZATIONS
             removeClippedSubviews={true}
-            maxToRenderPerBatch={15}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={20}
-            windowSize={10}
+            maxToRenderPerBatch={5}
+            updateCellsBatchingPeriod={200}
+            initialNumToRender={8}
+            windowSize={2}
+            legacyImplementation={false}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+            }}
             ListEmptyComponent={
               <Animated.View
                 style={[
@@ -2067,6 +2272,17 @@ const ChatScreen = ({route, navigation}) => {
                   multiline={true}
                   maxLength={1000}
                 />
+                {/* AI Rephrase Button */}
+                {messageText.trim().length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setShowStyleSelector(true)}
+                    style={styles.aiRephraseButton}
+                    disabled={isRephrasing}>
+                    <Text style={styles.aiRephraseButtonText}>
+                      ✨
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               <Animated.View
@@ -2086,14 +2302,14 @@ const ChatScreen = ({route, navigation}) => {
                     messageText.trim().length > 0 && styles.sendButtonActive,
                   ]}
                   onPress={sendMessage}
-                  disabled={!messageText.trim()}>
+                  disabled={!messageText.trim() || isRephrasing}>
                   <Text
                     style={[
                       styles.sendButtonText,
                       messageText.trim().length > 0 &&
                         styles.sendButtonTextActive,
                     ]}>
-                    Send
+                    {isRephrasing ? '...' : 'Send'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -2695,6 +2911,52 @@ const ChatScreen = ({route, navigation}) => {
           </View>
         </View>
       </Modal>
+
+      {/* AI Style Selector Modal */}
+      <Modal
+        visible={showStyleSelector}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStyleSelector(false)}>
+        <View style={styles.styleSelectorOverlay}>
+          <TouchableOpacity
+            style={styles.styleSelectorBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowStyleSelector(false)}
+          />
+          <Animated.View style={styles.styleSelectorContainer}>
+            <View style={styles.styleSelectorHeader}>
+              <Text style={styles.styleSelectorTitle}>Rephrase Message</Text>
+              <TouchableOpacity
+                onPress={() => setShowStyleSelector(false)}
+                style={styles.closeStyleButton}>
+                <Text style={styles.closeStyleText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.styleSelectorSubtitle}>
+              Choose a style to rephrase your message
+            </Text>
+            <View style={styles.styleSelectorContent}>
+              <FlatList
+                data={MESSAGE_STYLES}
+                numColumns={2}
+                keyExtractor={item => item.id}
+                renderItem={({item}) => (
+                  <TouchableOpacity
+                    style={styles.styleOption}
+                    onPress={() => handleRephraseMessage(item.id)}
+                    disabled={isRephrasing}>
+                    <Text style={styles.styleEmoji}>{item.emoji}</Text>
+                    <Text style={styles.styleName}>{item.name}</Text>
+                    <Text style={styles.styleDescription}>{item.description}</Text>
+                  </TouchableOpacity>
+                )}
+                contentContainerStyle={styles.styleList}
+              />
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -3061,6 +3323,9 @@ const styles = StyleSheet.create({
     flex: 1,
     maxHeight: 100,
     justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
   },
   input: {
     fontSize: 16,
@@ -3068,7 +3333,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts?.PoppinsRegular,
     paddingVertical: 10,
     paddingHorizontal: 12,
+    paddingRight: 80, // Space for AI buttons
     minHeight: 44,
+    flex: 1,
   },
   sendButtonContainer: {
     marginLeft: 8,
@@ -4259,6 +4526,110 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontFamily: fonts?.PoppinsRegular,
     fontStyle: 'italic',
+  },
+  // AI Rephrasing Styles
+  aiRephraseButton: {
+    position: 'absolute',
+    right: 40,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  aiRephraseButtonText: {
+    fontSize: 16,
+  },
+  styleSelectorOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  styleSelectorBackdrop: {
+    flex: 1,
+  },
+  styleSelectorContainer: {
+    backgroundColor: '#1e293b',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  styleSelectorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  styleSelectorTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors?.white,
+    fontFamily: fonts?.PoppinsSemiBold,
+  },
+  closeStyleButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeStyleText: {
+    fontSize: 24,
+    color: colors?.white,
+    lineHeight: 28,
+  },
+  styleSelectorSubtitle: {
+    fontSize: 14,
+    color: colors?.greyColor,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    fontFamily: fonts?.PoppinsRegular,
+  },
+  styleSelectorContent: {
+    paddingTop: 20,
+  },
+  styleList: {
+    paddingHorizontal: 15,
+    paddingBottom: 20,
+  },
+  styleOption: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    padding: 16,
+    margin: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+    minHeight: 120,
+    justifyContent: 'center',
+  },
+  styleEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  styleName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors?.white,
+    fontFamily: fonts?.PoppinsSemiBold,
+    marginBottom: 4,
+  },
+  styleDescription: {
+    fontSize: 12,
+    color: colors?.greyColor,
+    fontFamily: fonts?.PoppinsRegular,
+    textAlign: 'center',
   },
 });
 

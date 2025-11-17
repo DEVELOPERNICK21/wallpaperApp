@@ -112,6 +112,7 @@ const LoginScreen: React.FC = () => {
       // Store user details in Redux
       dispatch(storeUserDetails(user));
 
+
       // Update FCM token in Firestore
       await updateFCMToken(user.uid);
 

@@ -61,15 +61,87 @@ class EncryptionService {
       );
     }
     
+    // Ensure PRNG is available by generating some random bytes first
     try {
-      const keyPair = nacl.box.keyPair();
-      if (!keyPair || !keyPair.publicKey || !keyPair.privateKey) {
-        throw new Error('Failed to generate key pair');
+      const testBytes = nacl.randomBytes(32);
+      if (!testBytes || testBytes.length !== 32) {
+        throw new Error('PRNG test bytes generation failed');
       }
+    } catch (prngError: any) {
+      throw new Error(
+        `PRNG not working properly: ${prngError?.message || String(prngError)}`
+      );
+    }
+    
+    try {
+      console.log('🔐 Attempting to generate key pair...');
+      console.log('🔐 nacl available:', typeof nacl === 'object');
+      console.log('🔐 nacl.box available:', typeof nacl.box === 'object');
+      console.log('🔐 nacl.box.keyPair available:', typeof nacl.box.keyPair === 'function');
+      
+      // Try to generate key pair
+      let keyPair: nacl.BoxKeyPair;
+      try {
+        keyPair = nacl.box.keyPair();
+      } catch (keyPairError: any) {
+        console.error('❌ nacl.box.keyPair() threw an error:', keyPairError);
+        console.error('❌ Error details:', keyPairError?.message, keyPairError?.stack);
+        throw new Error(
+          `Failed to call nacl.box.keyPair(): ${keyPairError?.message || String(keyPairError)}`
+        );
+      }
+      
+      console.log('🔐 keyPair result:', keyPair);
+      console.log('🔐 keyPair type:', typeof keyPair);
+      console.log('🔐 keyPair is object:', keyPair && typeof keyPair === 'object');
+      
+      if (!keyPair) {
+        console.error('❌ keyPair is null or undefined');
+        throw new Error('Failed to generate key pair: keyPair is null or undefined');
+      }
+      
+      // tweetnacl returns secretKey, not privateKey
+      const secretKey = (keyPair as any).secretKey || (keyPair as any).privateKey;
+      
+      if (!keyPair.publicKey) {
+        console.error('❌ keyPair.publicKey is missing');
+        console.error('❌ keyPair keys:', Object.keys(keyPair));
+        console.error('❌ keyPair values:', Object.values(keyPair));
+        throw new Error('Failed to generate key pair: publicKey is missing');
+      }
+      
+      if (!secretKey) {
+        console.error('❌ keyPair.secretKey/privateKey is missing');
+        console.error('❌ keyPair keys:', Object.keys(keyPair));
+        console.error('❌ keyPair values:', Object.values(keyPair));
+        throw new Error('Failed to generate key pair: secretKey/privateKey is missing');
+      }
+      
+      // Verify key lengths
+      if (keyPair.publicKey.length !== 32) {
+        console.error('❌ Invalid public key length:', keyPair.publicKey.length);
+        throw new Error(`Invalid public key length: ${keyPair.publicKey.length}, expected 32`);
+      }
+      
+      if (secretKey.length !== 32) {
+        console.error('❌ Invalid secret key length:', secretKey.length);
+        throw new Error(`Invalid secret key length: ${secretKey.length}, expected 32`);
+      }
+      
       console.log('✅ Key pair generated successfully');
-      return keyPair;
+      console.log('✅ Public key length:', keyPair.publicKey.length);
+      console.log('✅ Secret key length:', secretKey.length);
+      
+      // Return with privateKey property for consistency with our interface
+      return {
+        publicKey: keyPair.publicKey,
+        privateKey: secretKey,
+      } as nacl.BoxKeyPair;
     } catch (error: any) {
       console.error('❌ Error generating key pair:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error stack:', error?.stack);
       const errorMessage = error?.message || String(error);
       if (errorMessage.includes('PRNG') || errorMessage.includes('random')) {
         throw new Error(
@@ -85,16 +157,28 @@ class EncryptionService {
    */
   async storePrivateKey(userId: string, privateKey: Uint8Array): Promise<void> {
     try {
+      console.log(`🔐 Attempting to store private key for user: ${userId}`);
       const privateKeyBase64 = naclUtil.encodeBase64(privateKey);
-      
+      console.log(`🔐 Key encoded, length: ${privateKeyBase64.length}`);
+
       // First, try to reset any existing credentials
       try {
         await Keychain.resetInternetCredentials(`user_${userId}_private_key`);
-      } catch (resetError) {
+        console.log('✅ Existing credentials reset');
+      } catch (resetError: any) {
         // Ignore if credentials don't exist
-        console.log('No existing credentials to reset');
+        const resetErrorMsg = resetError?.message || String(resetError);
+        if (
+          resetErrorMsg.includes('not found') ||
+          resetErrorMsg.includes('No credentials')
+        ) {
+          console.log('ℹ️ No existing credentials to reset');
+        } else {
+          console.warn('⚠️ Error resetting credentials (non-fatal):', resetErrorMsg);
+        }
       }
 
+      console.log('🔐 Storing credentials in keychain...');
       const result = await Keychain.setInternetCredentials(
         `user_${userId}_private_key`,
         userId,
@@ -103,18 +187,55 @@ class EncryptionService {
           accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
         }
       );
-      
-      // Verify the key was stored
-      const stored = await Keychain.getInternetCredentials(`user_${userId}_private_key`);
-      if (!stored || !stored.password) {
-        throw new Error('Failed to verify key storage in keychain');
+
+      if (!result) {
+        throw new Error('Keychain.setInternetCredentials returned false');
       }
-      
-      console.log('✅ Private key stored securely');
+      console.log('✅ Credentials stored in keychain');
+
+      // Wait a bit for keychain to sync
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Verify the key was stored
+      console.log('🔍 Verifying key storage...');
+      const stored = await Keychain.getInternetCredentials(`user_${userId}_private_key`);
+      if (!stored) {
+        throw new Error('Keychain.getInternetCredentials returned null');
+      }
+      if (!stored.password) {
+        throw new Error('Stored credentials missing password field');
+      }
+      if (stored.password !== privateKeyBase64) {
+        throw new Error('Stored key does not match original key');
+      }
+
+      console.log('✅ Private key stored and verified successfully');
     } catch (error: any) {
-      console.error('Error storing private key:', error);
+      console.error('❌ Error storing private key:', error);
       const errorMessage = error?.message || String(error);
-      throw new Error(`Keychain error: ${errorMessage}`);
+      console.error('❌ Keychain error details:', errorMessage);
+
+      // Provide more specific error messages
+      if (errorMessage.includes('UserCancel') || errorMessage.includes('cancel')) {
+        throw new Error('Keychain access was cancelled. Please try again.');
+      } else if (
+        errorMessage.includes('Biometry') ||
+        errorMessage.includes('TouchID') ||
+        errorMessage.includes('FaceID')
+      ) {
+        throw new Error(
+          'Biometric authentication failed. Please check your device settings.',
+        );
+      } else if (
+        errorMessage.includes('Keychain') ||
+        errorMessage.includes('keychain')
+      ) {
+        throw new Error(
+          'Unable to access device keychain. Please ensure your device is unlocked.',
+        );
+      } else {
+        throw new Error(`Keychain error: ${errorMessage}`);
+      }
     }
   }
 
@@ -138,9 +259,12 @@ class EncryptionService {
 
   /**
    * Store public keys in Firestore (safe to store publicly)
+   * Note: Using namespaced API (deprecated but still supported in v21)
+   * Will migrate to modular API when React Native Firebase v22 is released
    */
   async storePublicKeys(userId: string, publicKeys: PublicKeys): Promise<void> {
     try {
+      // Using namespaced API - deprecation warning is for future v22 migration
       await firestore()
         .collection('Users')
         .doc(userId)
@@ -160,9 +284,12 @@ class EncryptionService {
 
   /**
    * Get public keys from Firestore
+   * Note: Using namespaced API (deprecated but still supported in v21)
+   * Will migrate to modular API when React Native Firebase v22 is released
    */
   async getPublicKeys(userId: string): Promise<PublicKeys | null> {
     try {
+      // Using namespaced API - deprecation warning is for future v22 migration
       const userDoc = await firestore()
         .collection('Users')
         .doc(userId)
@@ -185,27 +312,51 @@ class EncryptionService {
     privateKey: Uint8Array;
   }> {
     try {
+      console.log(`🔐 Starting key initialization for user: ${userId}`);
+      
       // Generate identity key pair
       const keyPair = this.generateKeyPair();
+      console.log('✅ Key pair generated');
 
       // Encode public key to base64 for storage
       const publicKeys: PublicKeys = {
         identityPublicKey: naclUtil.encodeBase64(keyPair.publicKey),
       };
+      console.log('✅ Public key encoded');
 
       // Store private key securely
+      console.log('🔐 Storing private key in keychain...');
       await this.storePrivateKey(userId, keyPair.privateKey);
+      console.log('✅ Private key stored in keychain');
+
+      // Verify private key was stored
+      const verifyPrivateKey = await this.getPrivateKey(userId);
+      if (!verifyPrivateKey) {
+        throw new Error('Private key verification failed - key was not stored properly');
+      }
+      console.log('✅ Private key verified');
 
       // Store public keys in Firestore
+      console.log('🔐 Storing public keys in Firestore...');
       await this.storePublicKeys(userId, publicKeys);
+      console.log('✅ Public keys stored in Firestore');
 
-      console.log('✅ User keys initialized');
+      // Verify public keys were stored
+      const verifyPublicKeys = await this.getPublicKeys(userId);
+      if (!verifyPublicKeys?.identityPublicKey) {
+        throw new Error('Public keys verification failed - keys were not stored properly');
+      }
+      console.log('✅ Public keys verified');
+
+      console.log('✅ User keys initialized successfully');
       return {
         publicKeys,
         privateKey: keyPair.privateKey,
       };
     } catch (error) {
-      console.error('Error initializing user keys:', error);
+      console.error('❌ Error initializing user keys:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Error details:', errorMessage);
       throw error;
     }
   }
@@ -295,6 +446,38 @@ class EncryptionService {
     const privateKey = await this.getPrivateKey(userId);
     const publicKeys = await this.getPublicKeys(userId);
     return privateKey !== null && publicKeys !== null;
+  }
+
+  /**
+   * Clear encryption keys for a user (used on logout)
+   */
+  async clearUserKeys(userId: string): Promise<void> {
+    try {
+      console.log(`🔐 Clearing encryption keys for user: ${userId}`);
+      
+      // Clear private key from keychain
+      try {
+        await Keychain.resetInternetCredentials(`user_${userId}_private_key`);
+        console.log('✅ Private key cleared from keychain');
+      } catch (keychainError: any) {
+        // Ignore if credentials don't exist
+        const errorMsg = keychainError?.message || String(keychainError);
+        if (!errorMsg.includes('not found') && !errorMsg.includes('No credentials')) {
+          console.warn('⚠️ Error clearing keychain (non-fatal):', errorMsg);
+        } else {
+          console.log('ℹ️ No private key found to clear');
+        }
+      }
+
+      // Note: We don't delete public keys from Firestore on logout
+      // because they might be needed for decrypting old messages
+      // Public keys are safe to keep publicly
+      
+      console.log('✅ Encryption keys cleared successfully');
+    } catch (error) {
+      console.error('❌ Error clearing encryption keys:', error);
+      // Don't throw - logout should continue even if key clearing fails
+    }
   }
 
   /**
@@ -496,6 +679,21 @@ class EncryptionService {
     senderUserId: string
   ): Promise<string> {
     try {
+      // Check if sender has keys first, and initialize if missing
+      const senderHasKeys = await this.hasKeys(senderUserId);
+      if (!senderHasKeys) {
+        console.log('🔐 Sender keys missing in encryptMessageForUser, initializing...');
+        try {
+          await this.initializeUserKeys(senderUserId);
+          console.log('✅ Keys initialized in encryptMessageForUser');
+        } catch (initError) {
+          console.error('❌ Failed to initialize keys in encryptMessageForUser:', initError);
+          throw new Error(
+            `Your encryption keys not found and could not be initialized. Please log out and log back in to initialize your keys. User ID: ${senderUserId}`
+          );
+        }
+      }
+
       // Get recipient's public key
       const recipientPublicKeys = await this.getPublicKeys(recipientUserId);
       if (!recipientPublicKeys?.identityPublicKey) {
@@ -515,12 +713,28 @@ class EncryptionService {
         );
       }
 
-      // Get sender's private key
+      // Get sender's private key (should exist now after initialization check)
       const senderPrivateKey = await this.getPrivateKey(senderUserId);
       if (!senderPrivateKey) {
-        throw new Error(
-          `Your encryption keys not found. Please log out and log back in to initialize your keys. User ID: ${senderUserId}`
-        );
+        // Try one more time to initialize
+        console.log('⚠️ Private key still missing, attempting re-initialization...');
+        try {
+          await this.initializeUserKeys(senderUserId);
+          const retryKey = await this.getPrivateKey(senderUserId);
+          if (!retryKey) {
+            throw new Error('Private key still missing after initialization');
+          }
+          // Use the retry key
+          return this.encryptMessage(
+            messageText,
+            recipientPublicKey,
+            retryKey
+          );
+        } catch (retryError) {
+          throw new Error(
+            `Your encryption keys not found. Please log out and log back in to initialize your keys. User ID: ${senderUserId}`
+          );
+        }
       }
 
       // Encrypt message
@@ -571,7 +785,10 @@ class EncryptionService {
         recipientPrivateKey
       );
     } catch (error) {
-      console.error('Error decrypting message from user:', error);
+      // Only log detailed errors in dev mode to reduce noise
+      if (__DEV__) {
+        console.error('Error decrypting message from user:', error);
+      }
       throw error;
     }
   }

@@ -333,6 +333,7 @@ const HomeScreen = () => {
 
   const signOut = async () => {
     try {
+      const currentUser = auth().currentUser;
       await auth().signOut();
       dispatch(setLogOut());
       await removeUserData();
