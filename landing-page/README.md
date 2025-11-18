@@ -22,6 +22,8 @@ FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_KEY_HERE\n-----END
 # Optional fallbacks/baselines when Firestore is unavailable
 NEXT_PUBLIC_SEEDED_USER_COUNT=2500
 NEXT_PUBLIC_USER_COUNT_BASELINE=0
+# iOS IPA download URL for QR code
+NEXT_PUBLIC_IPA_DOWNLOAD_URL=https://your-domain.com/wallpaper-chat.ipa
 ```
 
 - `fetchUserCount` queries the Firestore `Users` collection using the Admin SDK.
@@ -41,6 +43,11 @@ The site runs at [http://localhost:3000](http://localhost:3000).
 - Works out-of-the-box on Vercel (`npm run build && npm start`)
 - Set the same environment variables in your hosting provider
 - Swap placeholder download/doc links in `app/page.tsx` before launch
+
+### Download Setup
+
+- **Android APK**: See `APK_DOWNLOAD_SETUP.md` for APK download setup
+- **iOS IPA**: See `IPA_DOWNLOAD_SETUP.md` for iOS QR code setup
 
 ### Related Repos
 

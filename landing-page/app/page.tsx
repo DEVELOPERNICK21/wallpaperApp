@@ -4,6 +4,7 @@ import {fetchUsageStats} from '@/lib/usageStats';
 import {UserCounter} from '@/components/UserCounter';
 import {UsageStats} from '@/components/UsageStats';
 import {UseCaseTabs} from '@/components/UseCaseTabs';
+import {IPADownloadQR} from '@/components/IPADownloadQR';
 
 const featureColumns = [
   {
@@ -75,6 +76,11 @@ export default async function Home() {
     Number.parseInt(process.env.NEXT_PUBLIC_USER_COUNT_BASELINE ?? '', 10) || 0;
   const userCount = await fetchUserCount({baseline});
   const usageStats = await fetchUsageStats();
+  // IPA download URL - uses file from public folder
+  // For production, set NEXT_PUBLIC_IPA_DOWNLOAD_URL to full URL (e.g., https://yourdomain.com/wallpe.ipa)
+  // For local/dev, will use relative path which works when page is loaded
+  const ipaDownloadUrl =
+    process.env.NEXT_PUBLIC_IPA_DOWNLOAD_URL || '/wallpe.ipa';
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
@@ -285,13 +291,152 @@ export default async function Home() {
             Next.js marketing site into your existing stack. Need help? We have
             detailed docs plus ready-to-run Firebase infrastructure.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="/wallpaper-chat.apk"
-              download="wallpaper-chat.apk"
-              className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200">
-              Get the latest APK
-            </Link>
+          
+          {/* Download Options */}
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+            {/* Android APK Download */}
+            <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-6 backdrop-blur">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-white">
+                  Download for Android
+                </h3>
+                <p className="mt-2 text-sm text-slate-400">
+                  Get the latest APK file for Android devices
+                </p>
+              </div>
+              
+              {/* Android Icon Visual Element */}
+              <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-emerald-600/5 p-8 border border-emerald-500/30 shadow-lg">
+                <div className="relative">
+                  {/* Android Robot - Modern Design */}
+                  <svg
+                    width="140"
+                    height="140"
+                    viewBox="0 0 200 200"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    {/* Antennae */}
+                    <circle cx="90" cy="45" r="6" fill="#3DDC84" />
+                    <circle cx="110" cy="45" r="6" fill="#3DDC84" />
+                    <path
+                      d="M90 39 L88 25 L92 25 Z"
+                      fill="#3DDC84"
+                    />
+                    <path
+                      d="M110 39 L108 25 L112 25 Z"
+                      fill="#3DDC84"
+                    />
+                    
+                    {/* Head */}
+                    <rect
+                      x="70"
+                      y="50"
+                      width="60"
+                      height="50"
+                      rx="8"
+                      fill="#3DDC84"
+                      className="drop-shadow-md"
+                    />
+                    
+                    {/* Eyes */}
+                    <circle cx="85" cy="70" r="8" fill="#FFFFFF" />
+                    <circle cx="115" cy="70" r="8" fill="#FFFFFF" />
+                    <circle cx="85" cy="70" r="5" fill="#1A1A1A" />
+                    <circle cx="115" cy="70" r="5" fill="#1A1A1A" />
+                    
+                    {/* Smile */}
+                    <path
+                      d="M85 85 Q100 92 115 85"
+                      stroke="#1A1A1A"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      fill="none"
+                      opacity="0.6"
+                    />
+                    
+                    {/* Body */}
+                    <rect
+                      x="60"
+                      y="100"
+                      width="80"
+                      height="70"
+                      rx="12"
+                      fill="#3DDC84"
+                      className="drop-shadow-md"
+                    />
+                    
+                    {/* Arms */}
+                    <rect
+                      x="40"
+                      y="110"
+                      width="20"
+                      height="50"
+                      rx="10"
+                      fill="#3DDC84"
+                    />
+                    <rect
+                      x="140"
+                      y="110"
+                      width="20"
+                      height="50"
+                      rx="10"
+                      fill="#3DDC84"
+                    />
+                    
+                    {/* Legs */}
+                    <rect
+                      x="75"
+                      y="170"
+                      width="18"
+                      height="25"
+                      rx="9"
+                      fill="#3DDC84"
+                    />
+                    <rect
+                      x="107"
+                      y="170"
+                      width="18"
+                      height="25"
+                      rx="9"
+                      fill="#3DDC84"
+                    />
+                  </svg>
+                  
+                  {/* Glow effect */}
+                  <div className="absolute inset-0 rounded-full bg-emerald-400/20 blur-xl -z-10 animate-pulse"></div>
+                </div>
+              </div>
+              
+              <Link
+                href="/wallpaper-chat.apk"
+                download="wallpaper-chat.apk"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="text-slate-950">
+                  <path
+                    d="M12 15.577l-3.539-3.538 1.423-1.423L12 12.73l2.116-2.115 1.423 1.423L12 15.577zM21 14v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5h2v5h14v-5h2z"
+                    fill="currentColor"
+                  />
+                </svg>
+                Download APK
+              </Link>
+            </div>
+
+            {/* iOS IPA Download with QR Code */}
+            <IPADownloadQR
+              ipaUrl={ipaDownloadUrl}
+              title="Install on iOS"
+              description="Scan with your iPhone camera to install"
+            />
+          </div>
+
+          {/* Additional Links */}
+          <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="https://example.com/docs"
               className="inline-flex items-center justify-center rounded-full border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-600">
