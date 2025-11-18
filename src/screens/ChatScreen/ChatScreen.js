@@ -731,10 +731,28 @@ const ChatScreen = ({route, navigation}) => {
       setMessageText(rephrasedMessage);
     } catch (error) {
       console.error('Error rephrasing message:', error);
-      Alert.alert(
-        'Rephrasing Failed',
-        error?.message || 'Failed to rephrase message. Please try again.'
-      );
+      const errorMessage = error?.message || 'Failed to rephrase message. Please try again.';
+      
+      // Show helpful alert based on error type
+      if (errorMessage.includes('limit exceeded') || errorMessage.includes('Monthly API limit')) {
+        Alert.alert(
+          'API Limit Exceeded',
+          'Your monthly API limit has been reached. Please:\n\n• Increase credit limit in OpenRouter settings\n• Wait for monthly reset\n• Or visit: https://openrouter.ai/settings/keys',
+          [
+            {text: 'OK', style: 'default'},
+            {
+              text: 'Open Settings',
+              style: 'default',
+              onPress: () => Linking.openURL('https://openrouter.ai/settings/keys')
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Rephrasing Failed',
+          errorMessage
+        );
+      }
     } finally {
       setIsRephrasing(false);
     }
