@@ -17,17 +17,23 @@ export function IPADownloadQR({
   // Convert relative URL to absolute URL for QR code scanning
   // QR codes need absolute URLs to work when scanned from a phone
   const absoluteUrl = useMemo(() => {
-    if (typeof window === 'undefined') {
-      // Server-side: return as-is (will be handled on client)
-      return ipaUrl;
-    }
-    
     // If already absolute URL, return as-is
     if (ipaUrl.startsWith('http://') || ipaUrl.startsWith('https://')) {
       return ipaUrl;
     }
     
-    // Convert relative URL to absolute
+    // For server-side rendering, return relative URL (shouldn't happen if server constructs it properly)
+    // But fallback is here for safety
+    if (typeof window === 'undefined') {
+      // Use environment variable or return as-is
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+      if (baseUrl) {
+        return `${baseUrl}${ipaUrl.startsWith('/') ? ipaUrl : '/' + ipaUrl}`;
+      }
+      return ipaUrl;
+    }
+    
+    // Convert relative URL to absolute on client-side
     return `${window.location.origin}${ipaUrl.startsWith('/') ? ipaUrl : '/' + ipaUrl}`;
   }, [ipaUrl]);
 

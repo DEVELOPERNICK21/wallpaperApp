@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import {headers} from 'next/headers';
 import {fetchUserCount} from '@/lib/userCount';
 import {fetchUsageStats} from '@/lib/usageStats';
 import {UserCounter} from '@/components/UserCounter';
@@ -76,11 +77,20 @@ export default async function Home() {
     Number.parseInt(process.env.NEXT_PUBLIC_USER_COUNT_BASELINE ?? '', 10) || 0;
   const userCount = await fetchUserCount({baseline});
   const usageStats = await fetchUsageStats();
-  // IPA download URL - uses file from public folder
-  // For production, set NEXT_PUBLIC_IPA_DOWNLOAD_URL to full URL (e.g., https://yourdomain.com/wallpe.ipa)
-  // For local/dev, will use relative path which works when page is loaded
-  const ipaDownloadUrl =
-    process.env.NEXT_PUBLIC_IPA_DOWNLOAD_URL || '/wallpe.ipa';
+  
+  // IPA download URL - construct absolute URL for QR code
+  // QR codes need absolute URLs to work when scanned from a phone
+  let ipaDownloadUrl = process.env.NEXT_PUBLIC_IPA_DOWNLOAD_URL;
+  
+  if (!ipaDownloadUrl) {
+    // Construct absolute URL from headers or Vercel env
+    const headersList = await headers();
+    const host = headersList.get('host') || process.env.VERCEL_URL || 'localhost:3000';
+    const protocol = process.env.NODE_ENV === 'production' || process.env.VERCEL_URL ? 'https' : 'http';
+    // Ensure host doesn't already include protocol
+    const cleanHost = host.replace(/^https?:\/\//, '');
+    ipaDownloadUrl = `${protocol}://${cleanHost}/wallpe.ipa`;
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
