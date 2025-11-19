@@ -19,6 +19,7 @@ xcuserdata
 DerivedData
 *.hmap
 *.ipa
+!landing-page/public/wallpe.ipa
 *.xcuserstate
 **/.xcode.env.local
 
