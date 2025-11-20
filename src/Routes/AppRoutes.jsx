@@ -13,14 +13,14 @@ import {
   HomeScreen,
   NewChatRoom,
   PasswordScreen,
-  ScannerScreen,
+  EnhancedProfileScreen,
+  EditProfileScreen,
+  ChangePasswordScreen,
+  NotificationSettingsScreen,
+  PrivacySecurityScreen,
+  PrivacyPolicyScreen,
+  SubscriptionScreen,
 } from '../screens';
-import EnhancedProfileScreen from '../screens/ProfileScreen/EnhancedProfileScreen';
-import EditProfileScreen from '../screens/ProfileScreen/EditProfileScreen';
-import ChangePasswordScreen from '../screens/PasswordScreen/ChangePasswordScreen';
-import NotificationSettingsScreen from '../screens/SettingsScreen/NotificationSettingsScreen';
-import PrivacySecurityScreen from '../screens/SettingsScreen/PrivacySecurityScreen';
-import PrivacyPolicyScreen from '../screens/SettingsScreen/PrivacyPolicyScreen';
 import MyStatusBar from '../component/StatusBar';
 import UserBottomTab from './UserBottomTabNavigator';
 
@@ -112,6 +112,11 @@ const AppRoutes = () => {
       <Stack.Screen
         name={ScreenConstants?.PRIVACY_POLICY_SCREEN}
         component={PrivacyPolicyScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.SUBSCRIPTION_SCREEN}
+        component={SubscriptionScreen}
         options={{headerShown: false, title: ''}}
       />
     </Stack.Navigator>

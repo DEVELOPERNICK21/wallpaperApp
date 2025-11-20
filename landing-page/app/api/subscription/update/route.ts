@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate subscription type
-    const validTypes = ['basic', 'premium', 'enterprise'];
+    const validTypes = ['basic', 'premium', 'pro', 'enterprise'];
     if (!validTypes.includes(subscriptionData.type)) {
       return NextResponse.json({error: 'Invalid subscription type'}, {status: 400});
     }

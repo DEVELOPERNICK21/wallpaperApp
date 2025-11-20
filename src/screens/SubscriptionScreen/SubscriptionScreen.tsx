@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -12,21 +12,27 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../redux/reducers';
-import SubscriptionService, {SubscriptionStatus} from '../../services/SubscriptionService';
-import firestore from '@react-native-firebase/firestore';
+import SubscriptionService, {
+  SubscriptionStatus,
+} from '../../services/SubscriptionService';
+import {LANDING_PAGE_CONFIG} from '../../config/constants';
 
 const SubscriptionScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(true);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] =
+    useState<SubscriptionStatus | null>(null);
   const user = useSelector((state: RootState) => state.userDetails);
   const userId = user?.user?.uid;
 
-  useEffect(() => {
-    checkSubscription();
-  }, []);
-
-  const checkSubscription = async () => {
-    if (!userId) return;
+  const checkSubscription = useCallback(async () => {
+    if (!userId) {
+      setLoading(false);
+      setSubscriptionStatus({
+        isActive: false,
+        subscriptionType: 'free',
+      });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -34,18 +40,53 @@ const SubscriptionScreen = ({navigation}: any) => {
       setSubscriptionStatus(status);
     } catch (error) {
       console.error('Error checking subscription:', error);
+      // Set default free subscription on error
+      setSubscriptionStatus({
+        isActive: false,
+        subscriptionType: 'free',
+      });
       Alert.alert('Error', 'Failed to check subscription status');
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
-  const handleSubscribe = () => {
-    // Open landing page subscription URL
-    const subscriptionUrl = 'https://your-domain.com/subscribe'; // Update with your actual URL
-    Linking.openURL(subscriptionUrl).catch(err =>
-      console.error('Error opening subscription URL:', err),
-    );
+  useEffect(() => {
+    checkSubscription();
+  }, [checkSubscription]);
+
+  const handleSubscribe = (planType?: 'premium' | 'pro') => {
+    try {
+      // Construct subscription URL with plan parameter
+      const planParam = planType ? `?plan=${planType}` : '';
+      const subscriptionUrl = `${LANDING_PAGE_CONFIG.BASE_URL}${LANDING_PAGE_CONFIG.SUBSCRIBE_PATH}${planParam}`;
+
+      console.log('Opening subscription URL:', subscriptionUrl);
+
+      Linking.canOpenURL(subscriptionUrl)
+        .then(supported => {
+          if (supported) {
+            return Linking.openURL(subscriptionUrl);
+          } else {
+            Alert.alert(
+              'Unable to Open Browser',
+              `Please visit our website to subscribe:\n${subscriptionUrl}`,
+              [{text: 'OK'}],
+            );
+          }
+        })
+        .catch(err => {
+          console.error('Error opening subscription URL:', err);
+          Alert.alert(
+            'Error',
+            'Unable to open browser. Please visit: ' + subscriptionUrl,
+            [{text: 'OK'}],
+          );
+        });
+    } catch (error) {
+      console.error('Error in handleSubscribe:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    }
   };
 
   const formatDate = (date?: Date) => {
@@ -69,11 +110,30 @@ const SubscriptionScreen = ({navigation}: any) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Subscription</Text>
-          <Text style={styles.subtitle}>Manage your subscription plan</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        bounces={true}
+        scrollEnabled={true}
+        nestedScrollEnabled={false}
+        keyboardShouldPersistTaps="handled"
+        alwaysBounceVertical={false}
+        overScrollMode="auto">
+        {/* Header with Back Button */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.header}>
+            <Text style={styles.title}>Subscription</Text>
+            <Text style={styles.subtitle}>Manage your subscription plan</Text>
+          </View>
         </View>
 
         {subscriptionStatus?.isActive ? (
@@ -109,7 +169,9 @@ const SubscriptionScreen = ({navigation}: any) => {
               style={styles.subscribeButton}
               onPress={handleSubscribe}
               activeOpacity={0.8}>
-              <Text style={styles.subscribeButtonText}>Manage Subscription</Text>
+              <Text style={styles.subscribeButtonText}>
+                Manage Subscription
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -121,7 +183,8 @@ const SubscriptionScreen = ({navigation}: any) => {
             <View style={styles.warningCard}>
               <Text style={styles.warningTitle}>Subscription Required</Text>
               <Text style={styles.warningText}>
-                You need an active subscription to use this app. Please subscribe to continue.
+                You need an active subscription to use this app. Please
+                subscribe to continue.
               </Text>
             </View>
 
@@ -136,7 +199,9 @@ const SubscriptionScreen = ({navigation}: any) => {
             </View>
 
             <View style={styles.plansContainer}>
-              <Text style={styles.plansTitle}>Choose a Plan</Text>
+              <View>
+                <Text style={styles.plansTitle}>Choose a Plan</Text>
+              </View>
 
               {/* Basic Plan */}
               <View style={styles.planCard}>
@@ -145,23 +210,21 @@ const SubscriptionScreen = ({navigation}: any) => {
                   <Text style={styles.planPrice}>Free</Text>
                   <Text style={styles.priceSubtext}>Forever</Text>
                 </View>
-                <Text style={styles.planValue}>Perfect for trying out private messaging</Text>
+                <Text style={styles.planValue}>
+                  Perfect for trying out private messaging
+                </Text>
                 <Text style={styles.planFeatures}>
-                  ✓ End-to-end encrypted messaging{'\n'}
-                  ✓ 1-on-1 & group chats (up to 10 members){'\n'}
-                  ✓ 30-day message history{'\n'}
-                  ✓ Standard wallpaper library{'\n'}
-                  ✓ PIN lock & inactivity auto-lock{'\n'}
-                  ✓ Disguised notifications{'\n'}
-                  ✓ Basic privacy controls{'\n'}
-                  ✓ Message search (last 30 days)
+                  ✓ End-to-end encrypted messaging{'\n'}✓ 1-on-1 & group chats
+                  (up to 10 members){'\n'}✓ 30-day message history{'\n'}✓
+                  Standard wallpaper library{'\n'}✓ PIN lock & inactivity
+                  auto-lock{'\n'}✓ Disguised notifications{'\n'}✓ Basic privacy
+                  controls{'\n'}✓ Message search (last 30 days)
                 </Text>
                 <View style={styles.limitationsContainer}>
                   <Text style={styles.limitationsTitle}>Limitations</Text>
                   <Text style={styles.limitationsText}>
-                    • Limited to 5 active chats{'\n'}
-                    • Standard wallpapers only{'\n'}
-                    • 30-day message retention
+                    • Limited to 5 active chats{'\n'}• Standard wallpapers only
+                    {'\n'}• 30-day message retention
                   </Text>
                 </View>
               </View>
@@ -181,19 +244,28 @@ const SubscriptionScreen = ({navigation}: any) => {
                   <Text style={styles.priceCadence}>/month</Text>
                 </View>
                 <Text style={styles.priceSubtext}>Save ₹3,600/year</Text>
-                <Text style={styles.planValue}>Best value for privacy-conscious users</Text>
-                <Text style={styles.planFeatures}>
-                  ✓ Everything in Basic{'\n'}
-                  ✓ Unlimited chats & group members{'\n'}
-                  ✓ Unlimited message history{'\n'}
-                  ✓ Premium HD wallpapers (exclusive){'\n'}
-                  ✓ Cloud backup & sync{'\n'}
-                  ✓ Advanced search (full history){'\n'}
-                  ✓ Message pinning & advanced features{'\n'}
-                  ✓ Priority customer support{'\n'}
-                  ✓ Early access to new features{'\n'}
-                  ✓ No ads or limitations
+                <Text style={styles.planValue}>
+                  Best value for privacy-conscious users
                 </Text>
+                <Text style={styles.planFeatures}>
+                  ✓ Everything in Basic{'\n'}✓ Unlimited chats & group members
+                  {'\n'}✓ Unlimited message history{'\n'}✓ Premium HD wallpapers
+                  (exclusive){'\n'}✓ Cloud backup & sync{'\n'}✓ Advanced search
+                  (full history){'\n'}✓ Message pinning & advanced features
+                  {'\n'}✓ Priority customer support{'\n'}✓ Early access to new
+                  features{'\n'}✓ No ads or limitations
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.planSubscribeButton,
+                    styles.planSubscribeButtonPrimary,
+                  ]}
+                  onPress={() => handleSubscribe('premium')}
+                  activeOpacity={0.8}>
+                  <Text style={styles.planSubscribeButtonText}>
+                    Subscribe to Premium
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* Pro Plan */}
@@ -210,17 +282,21 @@ const SubscriptionScreen = ({navigation}: any) => {
                 <Text style={styles.priceSubtext}>Save ₹6,000/year</Text>
                 <Text style={styles.planValue}>For teams & power users</Text>
                 <Text style={styles.planFeatures}>
-                  ✓ Everything in Premium{'\n'}
-                  ✓ Multi-device sync (up to 5 devices){'\n'}
-                  ✓ Team collaboration tools{'\n'}
-                  ✓ Advanced admin controls{'\n'}
-                  ✓ Custom wallpaper uploads{'\n'}
-                  ✓ Bulk message management{'\n'}
-                  ✓ Export chat history{'\n'}
-                  ✓ Dedicated support channel{'\n'}
-                  ✓ Custom branding options{'\n'}
-                  ✓ API access (coming soon)
+                  ✓ Everything in Premium{'\n'}✓ Multi-device sync (up to 5
+                  devices){'\n'}✓ Team collaboration tools{'\n'}✓ Advanced admin
+                  controls{'\n'}✓ Custom wallpaper uploads{'\n'}✓ Bulk message
+                  management{'\n'}✓ Export chat history{'\n'}✓ Dedicated support
+                  channel{'\n'}✓ Custom branding options{'\n'}✓ API access
+                  (coming soon)
                 </Text>
+                <TouchableOpacity
+                  style={styles.planSubscribeButton}
+                  onPress={() => handleSubscribe('pro')}
+                  activeOpacity={0.8}>
+                  <Text style={styles.planSubscribeButtonText}>
+                    Subscribe to Pro
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -229,7 +305,9 @@ const SubscriptionScreen = ({navigation}: any) => {
               <View style={styles.trustCard}>
                 <Text style={styles.trustIcon}>🔒</Text>
                 <Text style={styles.trustTitle}>7-Day Money Back</Text>
-                <Text style={styles.trustText}>Not satisfied? Get full refund</Text>
+                <Text style={styles.trustText}>
+                  Not satisfied? Get full refund
+                </Text>
               </View>
               <View style={styles.trustCard}>
                 <Text style={styles.trustIcon}>⚡</Text>
@@ -242,13 +320,6 @@ const SubscriptionScreen = ({navigation}: any) => {
                 <Text style={styles.trustText}>End-to-end encryption</Text>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={[styles.subscribeButton, styles.primaryButton]}
-              onPress={handleSubscribe}
-              activeOpacity={0.8}>
-              <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -271,11 +342,35 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     padding: 20,
+    paddingBottom: 60,
+    flexGrow: 1,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1e293b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  backButtonText: {
+    fontSize: 24,
+    color: '#f8fafc',
+    fontWeight: 'bold',
   },
   header: {
-    marginBottom: 24,
+    flex: 1,
   },
   title: {
     fontSize: 32,
@@ -388,6 +483,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#334155',
     position: 'relative',
+    overflow: 'visible',
   },
   recommendedPlan: {
     borderColor: '#a855f7',
@@ -541,7 +637,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  planSubscribeButton: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#334155',
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  planSubscribeButtonPrimary: {
+    backgroundColor: '#a855f7',
+    borderColor: '#a855f7',
+  },
+  planSubscribeButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
 });
 
 export default SubscriptionScreen;
-

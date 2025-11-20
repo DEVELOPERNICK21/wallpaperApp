@@ -23,7 +23,9 @@ import {removeUserData} from '../../utils/asynstorage';
 import {height, width} from '../../assets/string';
 import {colors} from '../../assets/color';
 import ScreenConstants from '../../Routes/ScreenConstants';
-import SubscriptionService, {SubscriptionStatus} from '../../services/SubscriptionService';
+import SubscriptionService, {
+  SubscriptionStatus,
+} from '../../services/SubscriptionService';
 import usageTracker from '../../utils/usageTracker';
 
 const EnhancedProfileScreen = () => {
@@ -44,7 +46,8 @@ const EnhancedProfileScreen = () => {
   const [statsLoading, setStatsLoading] = useState(true);
 
   // Subscription status
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] =
+    useState<SubscriptionStatus | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   // Daily usage for free users
@@ -171,7 +174,7 @@ const EnhancedProfileScreen = () => {
           currentUser.uid,
         );
         setSubscriptionStatus(status);
-        
+
         // If free user, fetch daily usage
         if (!status.isActive) {
           await fetchDailyUsage();
@@ -239,7 +242,7 @@ const EnhancedProfileScreen = () => {
             await auth().signOut();
             await removeUserData();
             dispatch(setLogOut());
-            
+
             // Reset navigation to login screen
             navigation.reset({
               index: 0,
@@ -303,6 +306,14 @@ const EnhancedProfileScreen = () => {
       onPress: () =>
         navigation.navigate(ScreenConstants.PRIVACY_SECURITY_SCREEN as never),
       color: '#8b5cf6',
+    },
+    {
+      id: 'logout',
+      icon: '🚪',
+      title: 'Logout',
+      subtitle: 'Sign out of your account',
+      onPress: () => handleLogout(),
+      color: '#dc2626',
     },
   ];
 
@@ -460,7 +471,7 @@ const EnhancedProfileScreen = () => {
           )}
         </Animated.View>
 
-        {/* Subscription Status Section */}
+        {/* Compact Subscription Status Section */}
         <Animated.View
           style={[
             styles.subscriptionContainer,
@@ -472,17 +483,21 @@ const EnhancedProfileScreen = () => {
           {subscriptionLoading ? (
             <View style={styles.subscriptionLoadingContainer}>
               <ActivityIndicator size="small" color="#6366f1" />
-              <Text style={styles.subscriptionLoadingText}>
-                Loading subscription...
-              </Text>
             </View>
           ) : subscriptionStatus?.isActive ? (
-            <View style={styles.subscriptionActiveCard}>
-              <View style={styles.subscriptionHeader}>
-                <View style={styles.subscriptionBadgeContainer}>
+            <TouchableOpacity
+              style={styles.subscriptionActiveCard}
+              activeOpacity={0.8}
+              onPress={() =>
+                navigation.navigate(
+                  ScreenConstants.SUBSCRIPTION_SCREEN as never,
+                )
+              }>
+              <View style={styles.subscriptionCompactHeader}>
+                <View style={styles.subscriptionLeft}>
                   <View
                     style={[
-                      styles.subscriptionBadge,
+                      styles.subscriptionBadgeCompact,
                       {
                         backgroundColor: `${getSubscriptionPlanColor(
                           subscriptionStatus.subscriptionType,
@@ -491,105 +506,76 @@ const EnhancedProfileScreen = () => {
                     ]}>
                     <Text
                       style={[
-                        styles.subscriptionBadgeText,
+                        styles.subscriptionBadgeTextCompact,
                         {
                           color: getSubscriptionPlanColor(
                             subscriptionStatus.subscriptionType,
                           ),
                         },
                       ]}>
-                      ✓ Active
+                      ✓
+                    </Text>
+                  </View>
+                  <View style={styles.subscriptionInfo}>
+                    <Text style={styles.subscriptionPlanNameCompact}>
+                      {getSubscriptionPlanName(
+                        subscriptionStatus.subscriptionType,
+                      )}
+                    </Text>
+                    {subscriptionStatus.isLifetime ? (
+                      <Text style={styles.subscriptionSubtext}>Lifetime</Text>
+                    ) : subscriptionStatus.endDate ? (
+                      <Text style={styles.subscriptionSubtext}>
+                        {getDaysRemaining(subscriptionStatus.endDate)! > 0
+                          ? `${getDaysRemaining(
+                              subscriptionStatus.endDate,
+                            )}d left`
+                          : 'Expired'}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+                <Text style={styles.subscriptionArrow}>›</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.subscriptionInactiveCard}
+              activeOpacity={0.8}
+              onPress={() =>
+                navigation.navigate(
+                  ScreenConstants.SUBSCRIPTION_SCREEN as never,
+                )
+              }>
+              <View style={styles.subscriptionCompactHeader}>
+                <View style={styles.subscriptionLeft}>
+                  <View
+                    style={[
+                      styles.subscriptionBadgeCompact,
+                      {backgroundColor: '#64748b20'},
+                    ]}>
+                    <Text
+                      style={[
+                        styles.subscriptionBadgeTextCompact,
+                        {color: '#64748b'},
+                      ]}>
+                      ⭐
+                    </Text>
+                  </View>
+                  <View style={styles.subscriptionInfo}>
+                    <Text style={styles.subscriptionPlanNameCompact}>
+                      Free Plan
+                    </Text>
+                    <Text style={styles.subscriptionSubtext}>
+                      {dailyUsage.messagesSent} msgs today • Upgrade now
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.subscriptionPlanName}>
-                  {getSubscriptionPlanName(subscriptionStatus.subscriptionType)}
-                </Text>
+                <View style={styles.subscriptionUpgradeBadge}>
+                  <Text style={styles.subscriptionUpgradeText}>UPGRADE</Text>
+                </View>
               </View>
-
-              {subscriptionStatus.isLifetime ? (
-                <Text style={styles.subscriptionLifetime}>Lifetime Access</Text>
-              ) : subscriptionStatus.endDate ? (
-                <View style={styles.subscriptionExpiryContainer}>
-                  <Text style={styles.subscriptionExpiryLabel}>
-                    {getDaysRemaining(subscriptionStatus.endDate) !== null &&
-                    getDaysRemaining(subscriptionStatus.endDate)! > 0
-                      ? `Expires in ${getDaysRemaining(subscriptionStatus.endDate)} days`
-                      : 'Expired'}
-                  </Text>
-                  <Text style={styles.subscriptionExpiryDate}>
-                    {formatDate(subscriptionStatus.endDate)}
-                  </Text>
-                </View>
-              ) : null}
-
-              <TouchableOpacity
-                style={styles.subscriptionManageButton}
-                onPress={() =>
-                  navigation.navigate(ScreenConstants.SUBSCRIPTION_SCREEN as never)
-                }>
-                <Text style={styles.subscriptionManageButtonText}>
-                  Manage Subscription
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.subscriptionInactiveCard}>
-              <View style={styles.subscriptionHeader}>
-                <View
-                  style={[
-                    styles.subscriptionBadge,
-                    {backgroundColor: '#64748b20'},
-                  ]}>
-                  <Text style={[styles.subscriptionBadgeText, {color: '#64748b'}]}>
-                    Free Plan
-                  </Text>
-                </View>
-                <Text style={styles.subscriptionPlanName}>Basic</Text>
-              </View>
-
-              <Text style={styles.subscriptionDescription}>
-                Upgrade to unlock unlimited features, premium wallpapers, and
-                more!
-              </Text>
-
-              {/* Daily Usage for Free Users */}
-              {!usageLoading && (
-                <View style={styles.usageContainer}>
-                  <Text style={styles.usageTitle}>Today's Usage</Text>
-                  <View style={styles.usageStats}>
-                    <View style={styles.usageStatItem}>
-                      <Text style={styles.usageStatValue}>
-                        {dailyUsage.messagesSent}
-                      </Text>
-                      <Text style={styles.usageStatLabel}>Messages</Text>
-                    </View>
-                    <View style={styles.usageDivider} />
-                    <View style={styles.usageStatItem}>
-                      <Text style={styles.usageStatValue}>
-                        {dailyUsage.chatsAccessed}
-                      </Text>
-                      <Text style={styles.usageStatLabel}>Chats</Text>
-                    </View>
-                    <View style={styles.usageDivider} />
-                    <View style={styles.usageStatItem}>
-                      <Text style={styles.usageStatValue}>
-                        {dailyUsage.appOpens}
-                      </Text>
-                      <Text style={styles.usageStatLabel}>Opens</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={styles.subscribeButton}
-                onPress={() =>
-                  navigation.navigate(ScreenConstants.SUBSCRIPTION_SCREEN as never)
-                }>
-                <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           )}
         </Animated.View>
 
@@ -597,51 +583,78 @@ const EnhancedProfileScreen = () => {
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Settings</Text>
           {menuItems.map((item, index) => (
-            <Animated.View
+            <TouchableOpacity
               key={item.id}
               style={[
                 styles.menuItem,
-                {
-                  opacity: fadeAnim,
-                  transform: [
-                    {
-                      translateY: slideAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [(index + 1) * 20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}>
-              <TouchableOpacity
-                style={styles.menuItemContent}
-                onPress={item.onPress}
-                activeOpacity={0.7}>
+                item.id === 'logout' && styles.menuItemLogout,
+              ]}
+              onPress={item.onPress}
+              activeOpacity={0.7}>
+              <Animated.View
+                style={[
+                  styles.menuItemContent,
+                  item.id === 'logout' && styles.menuItemContentLogout,
+                  {
+                    opacity: fadeAnim,
+                    transform: [
+                      {
+                        translateY: slideAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [(index + 1) * 20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}>
                 <View
                   style={[
                     styles.menuIconContainer,
-                    {backgroundColor: `${item.color}20`},
+                    {
+                      backgroundColor: `${item.color}20`,
+                    },
+                    item.id === 'logout' && styles.menuIconContainerLogout,
                   ]}>
                   <Text style={styles.menuIcon}>{item.icon}</Text>
                 </View>
                 <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                  <Text
+                    style={[
+                      styles.menuTitle,
+                      item.id === 'logout' && styles.menuTitleLogout,
+                    ]}>
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.menuSubtitle,
+                      item.id === 'logout' && styles.menuSubtitleLogout,
+                    ]}>
+                    {item.subtitle}
+                  </Text>
                 </View>
-                <Text style={styles.menuArrow}>›</Text>
-              </TouchableOpacity>
-            </Animated.View>
+                <Text
+                  style={[
+                    styles.menuArrow,
+                    item.id === 'logout' && styles.menuArrowLogout,
+                  ]}>
+                  ›
+                </Text>
+              </Animated.View>
+            </TouchableOpacity>
           ))}
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.8}>
-          <Text style={styles.logoutIcon}>🚪</Text>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        {/* <View style={styles.logoutContainer}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}>
+            <Text style={styles.logoutIcon}>🚪</Text>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View> */}
 
         {/* App Version */}
         <Text style={styles.versionText}>Version 1.0.0</Text>
@@ -665,103 +678,102 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   scrollContent: {
-    paddingBottom: 120,
-    flexGrow: 1,
+    paddingBottom: 100,
   },
   header: {
     alignItems: 'center',
-    paddingTop: 30,
-    paddingBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     paddingHorizontal: 20,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
     borderColor: '#6366f1',
   },
   avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#6366f1',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#1e293b',
   },
   avatarText: {
     color: '#ffffff',
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: 'bold',
   },
   editAvatarButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#6366f1',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#0f172a',
   },
   editAvatarIcon: {
-    fontSize: 16,
+    fontSize: 14,
   },
   userName: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#f8fafc',
-    marginBottom: 5,
+    marginBottom: 4,
     textAlign: 'center',
   },
   userEmail: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#94a3b8',
-    marginBottom: 10,
+    marginBottom: 8,
     textAlign: 'center',
   },
   userBio: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#cbd5e1',
     textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 10,
+    lineHeight: 18,
+    marginTop: 8,
     paddingHorizontal: 30,
   },
   statsContainer: {
     flexDirection: 'row',
     backgroundColor: '#1e293b',
     marginHorizontal: 20,
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 30,
-    elevation: 5,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#6366f1',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#94a3b8',
   },
   statDivider: {
@@ -782,73 +794,97 @@ const styles = StyleSheet.create({
   },
   menuSection: {
     paddingHorizontal: 20,
+    marginBottom: 0,
+  },
+  logoutContainer: {
+    paddingHorizontal: 20,
+    marginTop: 24,
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#f8fafc',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   menuItem: {
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  menuItemLogout: {
+    marginTop: 8,
   },
   menuItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1e293b',
-    borderRadius: 15,
-    padding: 16,
+    borderRadius: 12,
+    padding: 14,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.2,
     shadowRadius: 2,
+    width: '100%',
+  },
+  menuItemContentLogout: {
+    backgroundColor: '#1e1a1a',
+    borderWidth: 1,
+    borderColor: '#dc262620',
   },
   menuIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 12,
+  },
+  menuIconContainerLogout: {
+    backgroundColor: '#dc262620',
   },
   menuIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   menuTextContainer: {
     flex: 1,
   },
   menuTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#f8fafc',
-    marginBottom: 3,
+    marginBottom: 2,
+  },
+  menuTitleLogout: {
+    color: '#fca5a5',
   },
   menuSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#94a3b8',
   },
+  menuSubtitleLogout: {
+    color: '#f87171',
+  },
   menuArrow: {
-    fontSize: 30,
+    fontSize: 24,
     color: '#64748b',
     fontWeight: '300',
+  },
+  menuArrowLogout: {
+    color: '#dc2626',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#dc2626',
-    marginHorizontal: 20,
-    marginTop: 40,
-    marginBottom: 20,
     padding: 16,
-    borderRadius: 15,
+    borderRadius: 12,
     elevation: 3,
     shadowColor: '#dc2626',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.3,
     shadowRadius: 4,
+    width: '100%',
   },
   logoutIcon: {
     fontSize: 20,
@@ -868,154 +904,88 @@ const styles = StyleSheet.create({
   },
   subscriptionContainer: {
     marginHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   subscriptionLoadingContainer: {
     backgroundColor: '#1e293b',
-    borderRadius: 15,
-    padding: 20,
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 100,
+    minHeight: 60,
   },
   subscriptionLoadingText: {
     color: '#94a3b8',
-    fontSize: 14,
-    marginTop: 10,
+    fontSize: 12,
+    marginTop: 8,
   },
   subscriptionActiveCard: {
     backgroundColor: '#1e293b',
-    borderRadius: 15,
-    padding: 20,
-    borderWidth: 2,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1.5,
     borderColor: '#22c55e',
   },
   subscriptionInactiveCard: {
     backgroundColor: '#1e293b',
-    borderRadius: 15,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#64748b',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#a855f7',
   },
-  subscriptionHeader: {
+  subscriptionCompactHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
-  subscriptionBadgeContainer: {
+  subscriptionLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  subscriptionBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  subscriptionBadgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  subscriptionPlanName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#f8fafc',
-  },
-  subscriptionLifetime: {
-    fontSize: 14,
-    color: '#22c55e',
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  subscriptionExpiryContainer: {
-    marginBottom: 12,
-  },
-  subscriptionExpiryLabel: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginBottom: 4,
-  },
-  subscriptionExpiryDate: {
-    fontSize: 14,
-    color: '#cbd5e1',
-    fontWeight: '600',
-  },
-  subscriptionDescription: {
-    fontSize: 14,
-    color: '#94a3b8',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  subscriptionManageButton: {
-    backgroundColor: '#334155',
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  subscriptionManageButtonText: {
-    color: '#f8fafc',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  subscribeButton: {
-    backgroundColor: '#a855f7',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-    elevation: 3,
-    shadowColor: '#a855f7',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  subscribeButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  usageContainer: {
-    marginTop: 16,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: '#0f172a',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  usageTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#94a3b8',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  usageStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  usageStatItem: {
     alignItems: 'center',
     flex: 1,
   },
-  usageStatValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#6366f1',
-    marginBottom: 4,
+  subscriptionBadgeCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  usageStatLabel: {
+  subscriptionBadgeTextCompact: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  subscriptionInfo: {
+    flex: 1,
+  },
+  subscriptionPlanNameCompact: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#f8fafc',
+    marginBottom: 2,
+  },
+  subscriptionSubtext: {
     fontSize: 12,
     color: '#94a3b8',
   },
-  usageDivider: {
-    width: 1,
-    backgroundColor: '#334155',
-    marginHorizontal: 8,
+  subscriptionArrow: {
+    fontSize: 24,
+    color: '#64748b',
+    fontWeight: '300',
+    marginLeft: 8,
+  },
+  subscriptionUpgradeBadge: {
+    backgroundColor: '#a855f7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  subscriptionUpgradeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
 });
 

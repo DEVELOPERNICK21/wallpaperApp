@@ -39,6 +39,17 @@ export const API_CONFIG = {
   RETRY_ATTEMPTS: 3,
 } as const;
 
+// ============ LANDING PAGE CONFIGURATION ============
+
+export const LANDING_PAGE_CONFIG = {
+  // Update this with your actual landing page URL
+  BASE_URL:
+    __DEV__
+      ? 'http://localhost:3000'
+      : process.env.LANDING_PAGE_URL || 'https://your-domain.vercel.app',
+  SUBSCRIBE_PATH: '/subscribe',
+} as const;
+
 // ============ FIREBASE CONFIGURATION ============
 
 export const FIREBASE_CONFIG = {
