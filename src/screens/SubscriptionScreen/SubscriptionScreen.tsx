@@ -125,41 +125,121 @@ const SubscriptionScreen = ({navigation}: any) => {
               </Text>
             </View>
 
+            {/* Launch Special Banner */}
+            <View style={styles.bannerContainer}>
+              <View style={styles.banner}>
+                <Text style={styles.bannerBadge}>🎉 Launch Special</Text>
+                <Text style={styles.bannerText}>
+                  Up to 60% OFF on Premium & Pro plans - Limited time only!
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.plansContainer}>
               <Text style={styles.plansTitle}>Choose a Plan</Text>
 
+              {/* Basic Plan */}
               <View style={styles.planCard}>
                 <Text style={styles.planName}>Basic</Text>
-                <Text style={styles.planPrice}>₹99/month</Text>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.planPrice}>Free</Text>
+                  <Text style={styles.priceSubtext}>Forever</Text>
+                </View>
+                <Text style={styles.planValue}>Perfect for trying out private messaging</Text>
                 <Text style={styles.planFeatures}>
-                  • All basic features{'\n'}
-                  • Standard wallpapers{'\n'}
-                  • 30-day message history
+                  ✓ End-to-end encrypted messaging{'\n'}
+                  ✓ 1-on-1 & group chats (up to 10 members){'\n'}
+                  ✓ 30-day message history{'\n'}
+                  ✓ Standard wallpaper library{'\n'}
+                  ✓ PIN lock & inactivity auto-lock{'\n'}
+                  ✓ Disguised notifications{'\n'}
+                  ✓ Basic privacy controls{'\n'}
+                  ✓ Message search (last 30 days)
                 </Text>
+                <View style={styles.limitationsContainer}>
+                  <Text style={styles.limitationsTitle}>Limitations</Text>
+                  <Text style={styles.limitationsText}>
+                    • Limited to 5 active chats{'\n'}
+                    • Standard wallpapers only{'\n'}
+                    • 30-day message retention
+                  </Text>
+                </View>
               </View>
 
+              {/* Premium Plan - Recommended */}
               <View style={[styles.planCard, styles.recommendedPlan]}>
-                <Text style={styles.recommendedBadge}>Recommended</Text>
+                <View style={styles.recommendedBadgeContainer}>
+                  <Text style={styles.recommendedBadge}>Recommended</Text>
+                </View>
+                <View style={styles.savingsBadge}>
+                  <Text style={styles.savingsBadgeText}>60% OFF</Text>
+                </View>
                 <Text style={styles.planName}>Premium</Text>
-                <Text style={styles.planPrice}>₹149/month</Text>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.originalPrice}>₹499</Text>
+                  <Text style={styles.planPrice}>₹199</Text>
+                  <Text style={styles.priceCadence}>/month</Text>
+                </View>
+                <Text style={styles.priceSubtext}>Save ₹3,600/year</Text>
+                <Text style={styles.planValue}>Best value for privacy-conscious users</Text>
                 <Text style={styles.planFeatures}>
-                  • All basic features{'\n'}
-                  • Premium wallpapers{'\n'}
-                  • 1-year message history{'\n'}
-                  • AI features{'\n'}
-                  • Cloud backup
+                  ✓ Everything in Basic{'\n'}
+                  ✓ Unlimited chats & group members{'\n'}
+                  ✓ Unlimited message history{'\n'}
+                  ✓ Premium HD wallpapers (exclusive){'\n'}
+                  ✓ Cloud backup & sync{'\n'}
+                  ✓ Advanced search (full history){'\n'}
+                  ✓ Message pinning & advanced features{'\n'}
+                  ✓ Priority customer support{'\n'}
+                  ✓ Early access to new features{'\n'}
+                  ✓ No ads or limitations
                 </Text>
               </View>
 
+              {/* Pro Plan */}
               <View style={styles.planCard}>
-                <Text style={styles.planName}>Enterprise</Text>
-                <Text style={styles.planPrice}>₹499/month</Text>
+                <View style={styles.savingsBadge}>
+                  <Text style={styles.savingsBadgeText}>50% OFF</Text>
+                </View>
+                <Text style={styles.planName}>Pro</Text>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.originalPrice}>₹999</Text>
+                  <Text style={styles.planPrice}>₹499</Text>
+                  <Text style={styles.priceCadence}>/month</Text>
+                </View>
+                <Text style={styles.priceSubtext}>Save ₹6,000/year</Text>
+                <Text style={styles.planValue}>For teams & power users</Text>
                 <Text style={styles.planFeatures}>
-                  • Everything in Premium{'\n'}
-                  • Custom branding{'\n'}
-                  • Priority support{'\n'}
-                  • API access
+                  ✓ Everything in Premium{'\n'}
+                  ✓ Multi-device sync (up to 5 devices){'\n'}
+                  ✓ Team collaboration tools{'\n'}
+                  ✓ Advanced admin controls{'\n'}
+                  ✓ Custom wallpaper uploads{'\n'}
+                  ✓ Bulk message management{'\n'}
+                  ✓ Export chat history{'\n'}
+                  ✓ Dedicated support channel{'\n'}
+                  ✓ Custom branding options{'\n'}
+                  ✓ API access (coming soon)
                 </Text>
+              </View>
+            </View>
+
+            {/* Trust Indicators */}
+            <View style={styles.trustContainer}>
+              <View style={styles.trustCard}>
+                <Text style={styles.trustIcon}>🔒</Text>
+                <Text style={styles.trustTitle}>7-Day Money Back</Text>
+                <Text style={styles.trustText}>Not satisfied? Get full refund</Text>
+              </View>
+              <View style={styles.trustCard}>
+                <Text style={styles.trustIcon}>⚡</Text>
+                <Text style={styles.trustTitle}>Cancel Anytime</Text>
+                <Text style={styles.trustText}>No long-term contracts</Text>
+              </View>
+              <View style={styles.trustCard}>
+                <Text style={styles.trustIcon}>🛡️</Text>
+                <Text style={styles.trustTitle}>Secure & Private</Text>
+                <Text style={styles.trustText}>End-to-end encryption</Text>
               </View>
             </View>
 
@@ -272,6 +352,34 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     marginBottom: 16,
   },
+  bannerContainer: {
+    marginBottom: 24,
+  },
+  banner: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  bannerBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    color: '#fbbf24',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  bannerText: {
+    color: '#fef3c7',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   planCard: {
     backgroundColor: '#1e293b',
     padding: 20,
@@ -279,21 +387,44 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 2,
     borderColor: '#334155',
+    position: 'relative',
   },
   recommendedPlan: {
-    borderColor: '#6366f1',
-    backgroundColor: '#1e1b4b',
+    borderColor: '#a855f7',
+    backgroundColor: 'rgba(88, 28, 135, 0.3)',
+    borderWidth: 2.5,
+  },
+  recommendedBadgeContainer: {
+    position: 'absolute',
+    top: -12,
+    alignSelf: 'center',
+    zIndex: 10,
   },
   recommendedBadge: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#a855f7',
     color: '#ffffff',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontSize: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    fontSize: 11,
     fontWeight: 'bold',
-    alignSelf: 'flex-start',
-    marginBottom: 12,
+    textTransform: 'uppercase',
+    overflow: 'hidden',
+  },
+  savingsBadge: {
+    position: 'absolute',
+    top: -12,
+    right: -12,
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  savingsBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   planName: {
     fontSize: 24,
@@ -301,16 +432,100 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     marginBottom: 8,
   },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 4,
+  },
+  originalPrice: {
+    fontSize: 18,
+    color: '#64748b',
+    textDecorationLine: 'line-through',
+    marginRight: 8,
+  },
   planPrice: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#6366f1',
+    color: '#a855f7',
+    marginRight: 4,
+  },
+  priceCadence: {
+    fontSize: 16,
+    color: '#94a3b8',
+  },
+  priceSubtext: {
+    fontSize: 12,
+    color: '#22c55e',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  planValue: {
+    fontSize: 13,
+    color: '#94a3b8',
+    fontStyle: 'italic',
     marginBottom: 12,
   },
   planFeatures: {
     color: '#cbd5e1',
     fontSize: 14,
     lineHeight: 22,
+    marginTop: 8,
+  },
+  limitationsContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  limitationsTitle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  limitationsText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    lineHeight: 18,
+  },
+  trustContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  trustCard: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: '#1e293b',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginHorizontal: 4,
+  },
+  trustIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  trustTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#f8fafc',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  trustText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    textAlign: 'center',
   },
   subscribeButton: {
     backgroundColor: '#334155',

@@ -88,55 +88,77 @@ const policyHighlights = [
 
 const pricingPlans = [
   {
-    name: 'Scout',
+    name: 'Basic',
     price: 'Free',
-    tagline: 'Baseline cover story for solo operators testing the waters.',
-    description:
-      'Preview the wallpaper shell and open limited hidden chats to feel how the disguise behaves.',
+    priceSubtext: 'Forever',
     features: [
-      'PIN + inactivity lock on the hidden inbox',
-      '3 disguise wallpapers and limited hidden chat threads',
-      'Wallpaper-style notifications that mask message previews',
+      'End-to-end encrypted messaging',
+      '1-on-1 & group chats (up to 10 members)',
+      '30-day message history',
+      'Standard wallpaper library',
+      'PIN lock & inactivity auto-lock',
+      'Disguised notifications',
+      'Basic privacy controls',
+      'Message search (last 30 days)',
     ],
-    ctaLabel: 'Deploy Scout',
+    limitations: [
+      'Limited to 5 active chats',
+      'Standard wallpapers only',
+      '30-day message retention',
+    ],
     ctaHref: '/subscribe',
-    footnote: 'No credit card. Upgrade anytime inside the dashboard.',
+    ctaLabel: 'Get Started Free',
+    isPrimary: false,
+    value: 'Perfect for trying out private messaging',
   },
   {
-    name: 'Agent',
-    price: '₹399',
+    name: 'Premium',
+    price: '₹199',
     cadence: 'per month',
-    tagline: 'Our most trusted tier—full stealth chat inside the wallpaper layer.',
-    description:
-      'Unlocks the complete hidden messenger: unlimited disguised chats, custom wallpaper covers, and instant rescue flows.',
-    originalPrice: '₹599',
+    originalPrice: '₹499',
+    priceSubtext: 'Save ₹3,600/year',
+    savings: '60% OFF',
     features: [
-      'Unlimited wallpaper themes + custom decoy content library',
-      'Stealth unlock gestures, panic wipe, and fake update timelines',
-      'Real-time notification cloaking so alerts read like wallpaper tips',
+      'Everything in Basic',
+      'Unlimited chats & group members',
+      'Unlimited message history',
+      'Premium HD wallpapers (exclusive collection)',
+      'Cloud backup & sync',
+      'Advanced search (full history)',
+      'Message pinning & advanced features',
+      'Priority customer support',
+      'Early access to new features',
+      'No ads or limitations',
     ],
-    badge: 'Most Trusted',
+    ctaHref: '/subscribe',
+    ctaLabel: 'Start Premium Trial',
     isPrimary: true,
-    ctaLabel: 'Secure with Agent',
-    ctaHref: '/subscribe',
-    footnote: 'Founders cut: locked at ₹399/mo for earliest adopters.',
+    value: 'Best value for privacy-conscious users',
+    popular: true,
   },
   {
-    name: 'Black Ops',
-    price: '₹999',
+    name: 'Pro',
+    price: '₹499',
     cadence: 'per month',
-    tagline: 'For teams running coordinated hidden chats behind wallpapers.',
-    description:
-      'Adds orchestration so leads can manage multiple disguised messengers, revoke access, and sync evidence-free logs.',
-    originalPrice: '₹1,299',
+    originalPrice: '₹999',
+    priceSubtext: 'Save ₹6,000/year',
+    savings: '50% OFF',
     features: [
-      'Multi-device hidden inbox sync + remote session revoke',
-      'Admin dashboard with disguised invite links and audit trails',
-      'Automated panic workflows: vault shred, fake wallpaper logs, auto-DND',
+      'Everything in Premium',
+      'Multi-device sync (up to 5 devices)',
+      'Team collaboration tools',
+      'Advanced admin controls',
+      'Custom wallpaper uploads',
+      'Bulk message management',
+      'Export chat history',
+      'Dedicated support channel',
+      'Custom branding options',
+      'API access (coming soon)',
     ],
-    ctaLabel: 'Book a briefing',
     ctaHref: '#contact',
-    footnote: 'Founders cut: ₹999/mo or save 2 months with annual billing.',
+    ctaLabel: 'Contact Sales',
+    isPrimary: false,
+    value: 'For teams & power users',
   },
 ];
 
@@ -281,109 +303,182 @@ export default async function Home() {
           id="pricing"
           className="space-y-8 rounded-[32px] border border-slate-800/70 bg-slate-950/40 p-10 shadow-[0_40px_120px_-60px_rgba(56,189,248,0.5)]">
           <div className="flex flex-col gap-4 text-center">
-            <p className="text-sm uppercase tracking-[0.4em] text-slate-500">
-              Subscription cover levels
-            </p>
-            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
-              Pick the disguise intensity your mission needs
+            <h2 className="text-4xl font-bold text-white sm:text-5xl">
+              Choose Your Plan
             </h2>
-            <p className="mx-auto max-w-3xl text-base text-slate-300">
-              Direct billing keeps us outside the app-store spotlight—no 30% cut,
-              no forced policy changes. Every tier unlocks the hidden chat engine
-              inside the wallpaper gallery, plus a 7-day “not stealthy enough”
-              refund guarantee.
+            <p className="mx-auto max-w-2xl text-lg text-slate-300">
+              Subscribe to unlock all features of Wallpaper Chat
             </p>
           </div>
-          <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent p-6 text-center text-sm text-amber-50">
-            <p className="text-lg font-semibold text-amber-200">
-              Founder’s window: permanent price cut for early adopters
-            </p>
-            <p className="mt-2">
-              Agent now ₹399/mo (was ₹599) and Black Ops ₹999/mo (was ₹1,299). No coupon codes, no hidden upsell—lock the rate before we scale pricing in 2026.
-            </p>
+          
+          {/* Limited Time Offer Banner */}
+          <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent p-6 text-center">
+            <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+              <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-200">
+                🎉 Launch Special
+              </span>
+              <p className="text-base font-semibold text-amber-100">
+                Up to 60% OFF on Premium & Pro plans - Limited time only!
+              </p>
+            </div>
           </div>
+
           <div className="grid gap-6 lg:grid-cols-3">
             {pricingPlans.map(plan => (
               <article
                 key={plan.name}
-                className={`flex flex-col rounded-3xl border bg-slate-900/70 p-8 text-left shadow-[0_25px_60px_-45px_rgba(59,130,246,0.8)] ${
+                className={`relative flex flex-col rounded-2xl border p-8 text-left transition-all ${
                   plan.isPrimary
-                    ? 'border-sky-500/60 ring-2 ring-sky-400/40'
-                    : 'border-slate-800/70'
+                    ? 'border-purple-500/60 bg-gradient-to-br from-purple-900/40 via-purple-800/30 to-slate-900/70 shadow-[0_20px_60px_-30px_rgba(147,51,234,0.6)] scale-105 z-10'
+                    : 'border-slate-700/70 bg-slate-900/70 hover:border-slate-600 hover:scale-102'
                 }`}>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-semibold text-white">
-                      {plan.name}
-                    </h3>
-                    {plan.badge ? (
-                      <span className="rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-200">
-                        {plan.badge}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-sm uppercase tracking-[0.35em] text-slate-500">
-                    {plan.tagline}
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    {plan.originalPrice ? (
-                      <span className="text-sm text-slate-500 line-through">
-                        {plan.originalPrice}
-                      </span>
-                    ) : null}
-                    <span className="text-4xl font-bold text-white">
-                      {plan.price}
+                {/* Badge */}
+                {(plan.isPrimary || plan.popular) && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="rounded-full bg-purple-500 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg">
+                      {plan.badge || 'Recommended'}
                     </span>
-                    {plan.cadence ? (
-                      <span className="text-sm text-slate-400">{plan.cadence}</span>
-                    ) : null}
                   </div>
-                  <p className="text-sm text-slate-300">{plan.description}</p>
+                )}
+
+                {/* Savings Badge */}
+                {plan.savings && (
+                  <div className="absolute -top-3 -right-3">
+                    <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                      {plan.savings}
+                    </span>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-bold text-white">
+                    {plan.name}
+                  </h3>
+                  
+                  {/* Pricing */}
+                  <div className="space-y-1">
+                    <div className="flex items-baseline gap-2">
+                      {plan.originalPrice ? (
+                        <span className="text-lg text-slate-500 line-through">
+                          {plan.originalPrice}
+                        </span>
+                      ) : null}
+                      <span className="text-4xl font-bold text-white">
+                        {plan.price}
+                      </span>
+                      {plan.cadence ? (
+                        <span className="text-base text-slate-400">/{plan.cadence.replace('per ', '')}</span>
+                      ) : null}
+                    </div>
+                    {plan.priceSubtext && (
+                      <p className="text-xs text-emerald-400 font-medium">
+                        {plan.priceSubtext}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Value Proposition */}
+                  {plan.value && (
+                    <p className="text-sm text-slate-400 italic">
+                      {plan.value}
+                    </p>
+                  )}
                 </div>
+
+                {/* Features */}
                 <ul className="mt-6 space-y-3 text-sm text-slate-300">
                   {plan.features.map(feature => (
                     <li key={feature} className="flex items-start gap-3">
-                      <span className="mt-1 inline-flex h-2 w-2 flex-none rounded-full bg-emerald-400" />
+                      <svg
+                        className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-8 flex flex-col gap-3">
+
+                {/* Limitations (for Free tier) */}
+                {plan.limitations && plan.limitations.length > 0 && (
+                  <div className="mt-4 rounded-lg border border-slate-700/50 bg-slate-950/50 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Limitations
+                    </p>
+                    <ul className="space-y-1.5 text-xs text-slate-400">
+                      {plan.limitations.map(limitation => (
+                        <li key={limitation} className="flex items-start gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-600" />
+                          <span>{limitation}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* CTA Button */}
+                <div className="mt-8">
                   <Link
                     href={plan.ctaHref}
-                    className={`inline-flex items-center justify-center rounded-full px-6 py-3 text-base font-semibold transition focus:outline-none focus-visible:ring-2 ${
+                    className={`block w-full rounded-lg px-6 py-3 text-center text-base font-semibold transition-all focus:outline-none focus-visible:ring-2 ${
                       plan.isPrimary
-                        ? 'bg-sky-400 text-slate-950 hover:bg-sky-300 focus-visible:ring-sky-200'
-                        : 'border border-slate-700 text-slate-200 hover:border-slate-500 hover:bg-slate-900/40 focus-visible:ring-slate-600'
+                        ? 'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/50 focus-visible:ring-purple-400'
+                        : 'border border-slate-600 bg-slate-800/50 text-slate-200 hover:border-slate-500 hover:bg-slate-800 focus-visible:ring-slate-600'
                     }`}>
-                    {plan.ctaLabel}
+                    {plan.ctaLabel || 'Subscribe'}
                   </Link>
-                  <p className="text-xs text-slate-400">{plan.footnote}</p>
                 </div>
               </article>
             ))}
           </div>
-          <div className="grid gap-4 text-sm text-slate-300 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4">
-              <p className="font-semibold text-white">Urgency without panic</p>
-              <p className="mt-1 text-slate-400">
-                New disguise packs ship every Friday. Paid tiers see them 72 hours
-                before public drops.
+          
+          {/* Trust & Guarantee Section */}
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-800/70 bg-slate-900/50 p-4 text-center">
+              <div className="mb-2 text-2xl">🔒</div>
+              <p className="text-sm font-semibold text-white">7-Day Money Back</p>
+              <p className="mt-1 text-xs text-slate-400">
+                Not satisfied? Get full refund, no questions asked
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4">
-              <p className="font-semibold text-white">Proof under pressure</p>
-              <p className="mt-1 text-slate-400">
-                5,000+ undercover users operate on Disguise workflows daily.
+            <div className="rounded-xl border border-slate-800/70 bg-slate-900/50 p-4 text-center">
+              <div className="mb-2 text-2xl">⚡</div>
+              <p className="text-sm font-semibold text-white">Cancel Anytime</p>
+              <p className="mt-1 text-xs text-slate-400">
+                No long-term contracts, cancel with one click
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4">
-              <p className="font-semibold text-white">Risk reversal</p>
-              <p className="mt-1 text-slate-400">
-                Not impressed in 7 days? Full refund—and keep the disguise packs
-                you already downloaded.
+            <div className="rounded-xl border border-slate-800/70 bg-slate-900/50 p-4 text-center">
+              <div className="mb-2 text-2xl">🛡️</div>
+              <p className="text-sm font-semibold text-white">Secure & Private</p>
+              <p className="mt-1 text-xs text-slate-400">
+                End-to-end encryption, your data stays yours
               </p>
             </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-sm text-slate-400">
+              All plans include encrypted messaging, privacy controls, and regular updates.
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              Need help choosing?{' '}
+              <Link
+                href="#contact"
+                className="text-sky-400 hover:text-sky-300 underline">
+                Contact us
+              </Link>
+            </p>
+            <p className="mt-4 text-xs text-slate-500">
+              *Prices shown are in Indian Rupees (INR). Launch pricing valid for limited time.
+            </p>
           </div>
         </section>
 
