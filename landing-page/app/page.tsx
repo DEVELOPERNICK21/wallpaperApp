@@ -336,7 +336,7 @@ export default async function Home() {
                 {(plan.isPrimary || plan.popular) && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <span className="rounded-full bg-purple-500 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg">
-                      {plan.badge || 'Recommended'}
+                      Recommended
                     </span>
                   </div>
                 )}
