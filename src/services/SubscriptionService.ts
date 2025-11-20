@@ -2,7 +2,7 @@ import firestore from '@react-native-firebase/firestore';
 
 export interface SubscriptionStatus {
   isActive: boolean;
-  subscriptionType: 'free' | 'basic' | 'premium' | 'enterprise';
+  subscriptionType: 'free' | 'basic' | 'premium' | 'pro' | 'enterprise';
   subscriptionId?: string;
   startDate?: Date;
   endDate?: Date;
@@ -74,15 +74,15 @@ class SubscriptionService {
    */
   async updateSubscriptionStatus(
     userId: string,
-    subscriptionData: {
-      type: 'basic' | 'premium' | 'enterprise';
-      subscriptionId?: string;
-      paymentProvider?: string;
-      paymentId?: string;
-      startDate?: Date;
-      endDate?: Date;
-      isLifetime?: boolean;
-    },
+      subscriptionData: {
+        type: 'basic' | 'premium' | 'pro' | 'enterprise';
+        subscriptionId?: string;
+        paymentProvider?: string;
+        paymentId?: string;
+        startDate?: Date;
+        endDate?: Date;
+        isLifetime?: boolean;
+      },
   ): Promise<void> {
     try {
       const now = new Date();

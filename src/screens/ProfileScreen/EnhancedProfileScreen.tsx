@@ -23,6 +23,8 @@ import {removeUserData} from '../../utils/asynstorage';
 import {height, width} from '../../assets/string';
 import {colors} from '../../assets/color';
 import ScreenConstants from '../../Routes/ScreenConstants';
+import SubscriptionService, {SubscriptionStatus} from '../../services/SubscriptionService';
+import usageTracker from '../../utils/usageTracker';
 
 const EnhancedProfileScreen = () => {
   const user = useSelector((state: RootState) => state.userDetails);
@@ -40,6 +42,18 @@ const EnhancedProfileScreen = () => {
     groups: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
+
+  // Subscription status
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+  // Daily usage for free users
+  const [dailyUsage, setDailyUsage] = useState({
+    messagesSent: 0,
+    chatsAccessed: 0,
+    appOpens: 0,
+  });
+  const [usageLoading, setUsageLoading] = useState(false);
 
   // Animations
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -61,6 +75,7 @@ const EnhancedProfileScreen = () => {
 
     fetchUserData();
     fetchStatistics();
+    fetchSubscriptionStatus();
 
     // Set up real-time listener for statistics
     const currentUser = auth().currentUser;
@@ -76,6 +91,17 @@ const EnhancedProfileScreen = () => {
       return () => unsubscribe();
     }
   }, []);
+
+  // Track app open for free users and fetch usage
+  useEffect(() => {
+    const currentUser = auth().currentUser;
+    if (currentUser && subscriptionStatus) {
+      if (!subscriptionStatus.isActive) {
+        usageTracker.trackAppOpen(currentUser.uid);
+        fetchDailyUsage();
+      }
+    }
+  }, [subscriptionStatus?.isActive]);
 
   const fetchStatistics = async () => {
     try {
@@ -127,8 +153,50 @@ const EnhancedProfileScreen = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchUserData(), fetchStatistics()]);
+    await Promise.all([
+      fetchUserData(),
+      fetchStatistics(),
+      fetchSubscriptionStatus(),
+      fetchDailyUsage(),
+    ]);
     setRefreshing(false);
+  };
+
+  const fetchSubscriptionStatus = async () => {
+    try {
+      setSubscriptionLoading(true);
+      const currentUser = auth().currentUser;
+      if (currentUser) {
+        const status = await SubscriptionService.checkSubscriptionStatus(
+          currentUser.uid,
+        );
+        setSubscriptionStatus(status);
+        
+        // If free user, fetch daily usage
+        if (!status.isActive) {
+          await fetchDailyUsage();
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const fetchDailyUsage = async () => {
+    try {
+      setUsageLoading(true);
+      const currentUser = auth().currentUser;
+      if (currentUser) {
+        const usage = await usageTracker.getTodayUsage(currentUser.uid);
+        setDailyUsage(usage);
+      }
+    } catch (error) {
+      console.error('Error fetching daily usage:', error);
+    } finally {
+      setUsageLoading(false);
+    }
   };
 
   const fetchUserData = async () => {
@@ -188,6 +256,17 @@ const EnhancedProfileScreen = () => {
 
   const menuItems = [
     {
+      id: 'subscription',
+      icon: '💎',
+      title: 'Subscription',
+      subtitle: subscriptionStatus?.isActive
+        ? `${getSubscriptionPlanName(subscriptionStatus.subscriptionType)} Plan`
+        : 'Upgrade to Premium',
+      onPress: () =>
+        navigation.navigate(ScreenConstants.SUBSCRIPTION_SCREEN as never),
+      color: subscriptionStatus?.isActive ? '#a855f7' : '#f59e0b',
+    },
+    {
       id: 'edit-profile',
       icon: '👤',
       title: 'Edit Profile',
@@ -235,6 +314,51 @@ const EnhancedProfileScreen = () => {
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  const getSubscriptionPlanName = (type: string): string => {
+    switch (type) {
+      case 'premium':
+        return 'Premium';
+      case 'enterprise':
+      case 'pro':
+        return 'Pro';
+      case 'basic':
+        return 'Basic';
+      default:
+        return 'Free';
+    }
+  };
+
+  const getSubscriptionPlanColor = (type: string): string => {
+    switch (type) {
+      case 'premium':
+        return '#a855f7';
+      case 'enterprise':
+      case 'pro':
+        return '#6366f1';
+      case 'basic':
+        return '#10b981';
+      default:
+        return '#64748b';
+    }
+  };
+
+  const formatDate = (date?: Date): string => {
+    if (!date) return 'N/A';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getDaysRemaining = (endDate?: Date): number | null => {
+    if (!endDate) return null;
+    const now = new Date();
+    const diff = endDate.getTime() - now.getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 0;
   };
 
   if (loading) {
@@ -333,6 +457,139 @@ const EnhancedProfileScreen = () => {
                 <Text style={styles.statLabel}>Groups</Text>
               </View>
             </>
+          )}
+        </Animated.View>
+
+        {/* Subscription Status Section */}
+        <Animated.View
+          style={[
+            styles.subscriptionContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{translateY: slideAnim}],
+            },
+          ]}>
+          {subscriptionLoading ? (
+            <View style={styles.subscriptionLoadingContainer}>
+              <ActivityIndicator size="small" color="#6366f1" />
+              <Text style={styles.subscriptionLoadingText}>
+                Loading subscription...
+              </Text>
+            </View>
+          ) : subscriptionStatus?.isActive ? (
+            <View style={styles.subscriptionActiveCard}>
+              <View style={styles.subscriptionHeader}>
+                <View style={styles.subscriptionBadgeContainer}>
+                  <View
+                    style={[
+                      styles.subscriptionBadge,
+                      {
+                        backgroundColor: `${getSubscriptionPlanColor(
+                          subscriptionStatus.subscriptionType,
+                        )}20`,
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.subscriptionBadgeText,
+                        {
+                          color: getSubscriptionPlanColor(
+                            subscriptionStatus.subscriptionType,
+                          ),
+                        },
+                      ]}>
+                      ✓ Active
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.subscriptionPlanName}>
+                  {getSubscriptionPlanName(subscriptionStatus.subscriptionType)}
+                </Text>
+              </View>
+
+              {subscriptionStatus.isLifetime ? (
+                <Text style={styles.subscriptionLifetime}>Lifetime Access</Text>
+              ) : subscriptionStatus.endDate ? (
+                <View style={styles.subscriptionExpiryContainer}>
+                  <Text style={styles.subscriptionExpiryLabel}>
+                    {getDaysRemaining(subscriptionStatus.endDate) !== null &&
+                    getDaysRemaining(subscriptionStatus.endDate)! > 0
+                      ? `Expires in ${getDaysRemaining(subscriptionStatus.endDate)} days`
+                      : 'Expired'}
+                  </Text>
+                  <Text style={styles.subscriptionExpiryDate}>
+                    {formatDate(subscriptionStatus.endDate)}
+                  </Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.subscriptionManageButton}
+                onPress={() =>
+                  navigation.navigate(ScreenConstants.SUBSCRIPTION_SCREEN as never)
+                }>
+                <Text style={styles.subscriptionManageButtonText}>
+                  Manage Subscription
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.subscriptionInactiveCard}>
+              <View style={styles.subscriptionHeader}>
+                <View
+                  style={[
+                    styles.subscriptionBadge,
+                    {backgroundColor: '#64748b20'},
+                  ]}>
+                  <Text style={[styles.subscriptionBadgeText, {color: '#64748b'}]}>
+                    Free Plan
+                  </Text>
+                </View>
+                <Text style={styles.subscriptionPlanName}>Basic</Text>
+              </View>
+
+              <Text style={styles.subscriptionDescription}>
+                Upgrade to unlock unlimited features, premium wallpapers, and
+                more!
+              </Text>
+
+              {/* Daily Usage for Free Users */}
+              {!usageLoading && (
+                <View style={styles.usageContainer}>
+                  <Text style={styles.usageTitle}>Today's Usage</Text>
+                  <View style={styles.usageStats}>
+                    <View style={styles.usageStatItem}>
+                      <Text style={styles.usageStatValue}>
+                        {dailyUsage.messagesSent}
+                      </Text>
+                      <Text style={styles.usageStatLabel}>Messages</Text>
+                    </View>
+                    <View style={styles.usageDivider} />
+                    <View style={styles.usageStatItem}>
+                      <Text style={styles.usageStatValue}>
+                        {dailyUsage.chatsAccessed}
+                      </Text>
+                      <Text style={styles.usageStatLabel}>Chats</Text>
+                    </View>
+                    <View style={styles.usageDivider} />
+                    <View style={styles.usageStatItem}>
+                      <Text style={styles.usageStatValue}>
+                        {dailyUsage.appOpens}
+                      </Text>
+                      <Text style={styles.usageStatLabel}>Opens</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.subscribeButton}
+                onPress={() =>
+                  navigation.navigate(ScreenConstants.SUBSCRIPTION_SCREEN as never)
+                }>
+                <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </Animated.View>
 
@@ -608,6 +865,157 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 10,
     marginBottom: 30,
+  },
+  subscriptionContainer: {
+    marginHorizontal: 20,
+    marginBottom: 30,
+  },
+  subscriptionLoadingContainer: {
+    backgroundColor: '#1e293b',
+    borderRadius: 15,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
+  },
+  subscriptionLoadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginTop: 10,
+  },
+  subscriptionActiveCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 15,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#22c55e',
+  },
+  subscriptionInactiveCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 15,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#64748b',
+  },
+  subscriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  subscriptionBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subscriptionBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  subscriptionBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  subscriptionPlanName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#f8fafc',
+  },
+  subscriptionLifetime: {
+    fontSize: 14,
+    color: '#22c55e',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  subscriptionExpiryContainer: {
+    marginBottom: 12,
+  },
+  subscriptionExpiryLabel: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginBottom: 4,
+  },
+  subscriptionExpiryDate: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+  subscriptionDescription: {
+    fontSize: 14,
+    color: '#94a3b8',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  subscriptionManageButton: {
+    backgroundColor: '#334155',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  subscriptionManageButtonText: {
+    color: '#f8fafc',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  subscribeButton: {
+    backgroundColor: '#a855f7',
+    padding: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 8,
+    elevation: 3,
+    shadowColor: '#a855f7',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  subscribeButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  usageContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#0f172a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  usageTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#94a3b8',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  usageStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  usageStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  usageStatValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#6366f1',
+    marginBottom: 4,
+  },
+  usageStatLabel: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  usageDivider: {
+    width: 1,
+    backgroundColor: '#334155',
+    marginHorizontal: 8,
   },
 });
 
