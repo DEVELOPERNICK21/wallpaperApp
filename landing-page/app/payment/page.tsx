@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect, useState} from 'react';
+import {useEffect, useState, Suspense} from 'react';
 import {useSearchParams, useRouter} from 'next/navigation';
 import Script from 'next/script';
 
@@ -51,7 +51,7 @@ const plans: Record<string, PlanDetails> = {
   },
 };
 
-export default function PaymentPage() {
+function PaymentPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const planType = searchParams.get('plan') || 'premium';
@@ -388,6 +388,22 @@ export default function PaymentPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+            <p className="text-slate-400">Loading...</p>
+          </div>
+        </div>
+      }>
+      <PaymentPageContent />
+    </Suspense>
   );
 }
 

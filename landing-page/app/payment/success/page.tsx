@@ -1,10 +1,11 @@
 'use client';
 
+import {Suspense} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {useEffect, useState} from 'react';
 import Link from 'next/link';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessPageContent() {
   const searchParams = useSearchParams();
   const paymentId = searchParams.get('paymentId');
   const plan = searchParams.get('plan');
@@ -77,6 +78,22 @@ export default function PaymentSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+            <p className="text-slate-400">Loading...</p>
+          </div>
+        </div>
+      }>
+      <PaymentSuccessPageContent />
+    </Suspense>
   );
 }
 
