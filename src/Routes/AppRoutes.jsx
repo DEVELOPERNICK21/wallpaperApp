@@ -20,6 +20,7 @@ import EditProfileScreen from '../screens/ProfileScreen/EditProfileScreen';
 import ChangePasswordScreen from '../screens/PasswordScreen/ChangePasswordScreen';
 import NotificationSettingsScreen from '../screens/SettingsScreen/NotificationSettingsScreen';
 import PrivacySecurityScreen from '../screens/SettingsScreen/PrivacySecurityScreen';
+import PrivacyPolicyScreen from '../screens/SettingsScreen/PrivacyPolicyScreen';
 import MyStatusBar from '../component/StatusBar';
 import UserBottomTab from './UserBottomTabNavigator';
 
@@ -106,6 +107,11 @@ const AppRoutes = () => {
       <Stack.Screen
         name={ScreenConstants?.PRIVACY_SECURITY_SCREEN}
         component={PrivacySecurityScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.PRIVACY_POLICY_SCREEN}
+        component={PrivacyPolicyScreen}
         options={{headerShown: false, title: ''}}
       />
     </Stack.Navigator>

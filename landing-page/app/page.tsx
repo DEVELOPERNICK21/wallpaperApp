@@ -71,6 +71,72 @@ const proofPoints = [
   'Production-ready Firebase Auth, Firestore, Storage, FCM stack',
   'Battle-tested privacy guardrails documented and QA’d',
 ];
+const policyHighlights = [
+  {
+    title: 'Data minimization',
+    copy: 'Only account basics + encrypted telemetry are retained; chats stay E2EE even under legal request.',
+  },
+  {
+    title: 'Acceptable use',
+    copy: 'Disguise is for lawful privacy. We suspend harassment, exploitation, or terror-related activity.',
+  },
+  {
+    title: 'Abuse response',
+    copy: '24h triage on credible reports plus cooperation with valid legal orders keeps you protected.',
+  },
+];
+
+const pricingPlans = [
+  {
+    name: 'Scout',
+    price: 'Free',
+    tagline: 'Baseline cover story for solo operators testing the waters.',
+    description:
+      'Preview the wallpaper shell and open limited hidden chats to feel how the disguise behaves.',
+    features: [
+      'PIN + inactivity lock on the hidden inbox',
+      '3 disguise wallpapers and limited hidden chat threads',
+      'Wallpaper-style notifications that mask message previews',
+    ],
+    ctaLabel: 'Deploy Scout',
+    ctaHref: '/subscribe',
+    footnote: 'No credit card. Upgrade anytime inside the dashboard.',
+  },
+  {
+    name: 'Agent',
+    price: '₹599',
+    cadence: 'per month',
+    tagline: 'Our most trusted tier—full stealth chat inside the wallpaper layer.',
+    description:
+      'Unlocks the complete hidden messenger: unlimited disguised chats, custom wallpaper covers, and instant rescue flows.',
+    features: [
+      'Unlimited wallpaper themes + custom decoy content library',
+      'Stealth unlock gestures, panic wipe, and fake update timelines',
+      'Real-time notification cloaking so alerts read like wallpaper tips',
+    ],
+    badge: 'Most Trusted',
+    isPrimary: true,
+    ctaLabel: 'Secure with Agent',
+    ctaHref: '/subscribe',
+    footnote: '72h early access to every disguise pack drop.',
+  },
+  {
+    name: 'Black Ops',
+    price: '₹1,199',
+    cadence: 'per month',
+    tagline: 'For teams running coordinated hidden chats behind wallpapers.',
+    description:
+      'Adds orchestration so leads can manage multiple disguised messengers, revoke access, and sync evidence-free logs.',
+    features: [
+      'Multi-device hidden inbox sync + remote session revoke',
+      'Admin dashboard with disguised invite links and audit trails',
+      'Automated panic workflows: vault shred, fake wallpaper logs, auto-DND',
+    ],
+    ctaLabel: 'Book a briefing',
+    ctaHref: '#contact',
+    footnote: 'Limited seats each quarter. Includes white-glove onboarding.',
+  },
+];
 
 export default async function Home() {
   const baseline =
@@ -209,6 +275,140 @@ export default async function Home() {
           ))}
         </section>
 
+        <section
+          id="pricing"
+          className="space-y-8 rounded-[32px] border border-slate-800/70 bg-slate-950/40 p-10 shadow-[0_40px_120px_-60px_rgba(56,189,248,0.5)]">
+          <div className="flex flex-col gap-4 text-center">
+            <p className="text-sm uppercase tracking-[0.4em] text-slate-500">
+              Subscription cover levels
+            </p>
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
+              Pick the disguise intensity your mission needs
+            </h2>
+            <p className="mx-auto max-w-3xl text-base text-slate-300">
+              Direct billing keeps us outside the app-store spotlight—no 30% cut,
+              no forced policy changes. Every tier unlocks the hidden chat engine
+              inside the wallpaper gallery, plus a 7-day “not stealthy enough”
+              refund guarantee.
+            </p>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            {pricingPlans.map(plan => (
+              <article
+                key={plan.name}
+                className={`flex flex-col rounded-3xl border bg-slate-900/70 p-8 text-left shadow-[0_25px_60px_-45px_rgba(59,130,246,0.8)] ${
+                  plan.isPrimary
+                    ? 'border-sky-500/60 ring-2 ring-sky-400/40'
+                    : 'border-slate-800/70'
+                }`}>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-2xl font-semibold text-white">
+                      {plan.name}
+                    </h3>
+                    {plan.badge ? (
+                      <span className="rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-200">
+                        {plan.badge}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-sm uppercase tracking-[0.35em] text-slate-500">
+                    {plan.tagline}
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-white">
+                      {plan.price}
+                    </span>
+                    {plan.cadence ? (
+                      <span className="text-sm text-slate-400">{plan.cadence}</span>
+                    ) : null}
+                  </div>
+                  <p className="text-sm text-slate-300">{plan.description}</p>
+                </div>
+                <ul className="mt-6 space-y-3 text-sm text-slate-300">
+                  {plan.features.map(feature => (
+                    <li key={feature} className="flex items-start gap-3">
+                      <span className="mt-1 inline-flex h-2 w-2 flex-none rounded-full bg-emerald-400" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-8 flex flex-col gap-3">
+                  <Link
+                    href={plan.ctaHref}
+                    className={`inline-flex items-center justify-center rounded-full px-6 py-3 text-base font-semibold transition focus:outline-none focus-visible:ring-2 ${
+                      plan.isPrimary
+                        ? 'bg-sky-400 text-slate-950 hover:bg-sky-300 focus-visible:ring-sky-200'
+                        : 'border border-slate-700 text-slate-200 hover:border-slate-500 hover:bg-slate-900/40 focus-visible:ring-slate-600'
+                    }`}>
+                    {plan.ctaLabel}
+                  </Link>
+                  <p className="text-xs text-slate-400">{plan.footnote}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="grid gap-4 text-sm text-slate-300 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4">
+              <p className="font-semibold text-white">Urgency without panic</p>
+              <p className="mt-1 text-slate-400">
+                New disguise packs ship every Friday. Paid tiers see them 72 hours
+                before public drops.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4">
+              <p className="font-semibold text-white">Proof under pressure</p>
+              <p className="mt-1 text-slate-400">
+                5,000+ undercover users operate on Disguise workflows daily.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4">
+              <p className="font-semibold text-white">Risk reversal</p>
+              <p className="mt-1 text-slate-400">
+                Not impressed in 7 days? Full refund—and keep the disguise packs
+                you already downloaded.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="policy-overview"
+          className="rounded-[32px] border border-slate-800/80 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-10 shadow-[0_35px_90px_-60px_rgba(15,118,110,0.8)]">
+          <div className="flex flex-col gap-4 text-center">
+            <p className="text-sm uppercase tracking-[0.4em] text-emerald-400/80">
+              Privacy policy snapshot
+            </p>
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
+              Built for lawful secrecy, not bad actors
+            </h2>
+            <p className="mx-auto max-w-3xl text-base text-slate-300">
+              Wallpaper Chat keeps hidden chats invisible while setting strict
+              rules against illegal use. Every subscriber agrees to cooperate
+              with our acceptable-use policy and understands we suspend misuse.
+            </p>
+          </div>
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {policyHighlights.map(highlight => (
+              <article
+                key={highlight.title}
+                className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-6 text-left">
+                <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/80">
+                  {highlight.title}
+                </p>
+                <p className="mt-3 text-sm text-slate-300">{highlight.copy}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <Link
+              href="/privacy"
+              className="inline-flex items-center justify-center rounded-full border border-emerald-400/60 px-6 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40">
+              Read the full privacy policy
+            </Link>
+          </div>
+        </section>
+
         <section className="rounded-[32px] border border-slate-800 bg-slate-900/50 p-10 backdrop-blur">
           <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl space-y-4">
@@ -316,105 +516,13 @@ export default async function Home() {
               </div>
               
               {/* Android Icon Visual Element */}
-              <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-emerald-600/5 p-8 border border-emerald-500/30 shadow-lg">
-                <div className="relative">
-                  {/* Android Robot - Modern Design */}
-                  <svg
-                    width="140"
-                    height="140"
-                    viewBox="0 0 200 200"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg">
-                    {/* Antennae */}
-                    <circle cx="90" cy="45" r="6" fill="#3DDC84" />
-                    <circle cx="110" cy="45" r="6" fill="#3DDC84" />
-                    <path
-                      d="M90 39 L88 25 L92 25 Z"
-                      fill="#3DDC84"
-                    />
-                    <path
-                      d="M110 39 L108 25 L112 25 Z"
-                      fill="#3DDC84"
-                    />
-                    
-                    {/* Head */}
-                    <rect
-                      x="70"
-                      y="50"
-                      width="60"
-                      height="50"
-                      rx="8"
-                      fill="#3DDC84"
-                      className="drop-shadow-md"
-                    />
-                    
-                    {/* Eyes */}
-                    <circle cx="85" cy="70" r="8" fill="#FFFFFF" />
-                    <circle cx="115" cy="70" r="8" fill="#FFFFFF" />
-                    <circle cx="85" cy="70" r="5" fill="#1A1A1A" />
-                    <circle cx="115" cy="70" r="5" fill="#1A1A1A" />
-                    
-                    {/* Smile */}
-                    <path
-                      d="M85 85 Q100 92 115 85"
-                      stroke="#1A1A1A"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      fill="none"
-                      opacity="0.6"
-                    />
-                    
-                    {/* Body */}
-                    <rect
-                      x="60"
-                      y="100"
-                      width="80"
-                      height="70"
-                      rx="12"
-                      fill="#3DDC84"
-                      className="drop-shadow-md"
-                    />
-                    
-                    {/* Arms */}
-                    <rect
-                      x="40"
-                      y="110"
-                      width="20"
-                      height="50"
-                      rx="10"
-                      fill="#3DDC84"
-                    />
-                    <rect
-                      x="140"
-                      y="110"
-                      width="20"
-                      height="50"
-                      rx="10"
-                      fill="#3DDC84"
-                    />
-                    
-                    {/* Legs */}
-                    <rect
-                      x="75"
-                      y="170"
-                      width="18"
-                      height="25"
-                      rx="9"
-                      fill="#3DDC84"
-                    />
-                    <rect
-                      x="107"
-                      y="170"
-                      width="18"
-                      height="25"
-                      rx="9"
-                      fill="#3DDC84"
-                    />
-                  </svg>
-                  
-                  {/* Glow effect */}
-                  <div className="absolute inset-0 rounded-full bg-emerald-400/20 blur-xl -z-10 animate-pulse"></div>
-                </div>
+            <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-emerald-600/5 p-8 border border-emerald-500/30 shadow-lg">
+              <img
+                src="/android-logo-svgrepo-com.svg"
+                alt="Android download icon"
+                loading="lazy"
+                className="h-28 w-28 drop-shadow-md"
+              />
               </div>
               
               <Link
@@ -448,6 +556,11 @@ export default async function Home() {
           {/* Additional Links */}
           <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
+              href="/subscribe"
+              className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+              Subscribe Now
+            </Link>
+            <Link
               href="https://example.com/docs"
               className="inline-flex items-center justify-center rounded-full border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-600">
               Explore technical docs
@@ -473,6 +586,11 @@ export default async function Home() {
               founders@wallpaperchat.app
             </Link>
             <p>Secure briefings available upon request.</p>
+            <Link
+              href="/privacy"
+              className="text-xs text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-slate-200">
+              Privacy Policy & Acceptable Use
+            </Link>
           </div>
         </div>
       </footer>

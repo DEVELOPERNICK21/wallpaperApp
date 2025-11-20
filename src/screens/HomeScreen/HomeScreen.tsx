@@ -120,6 +120,59 @@ const HomeScreen = () => {
     return () => unsubscribe();
   }, []);
 
+  // Helper function to check if a chat is a direct chat
+  const isDirectChat = (chat: any): boolean => {
+    return (
+      (chat?.type === 'direct' || (!chat?.type && chat?.members?.length === 2)) &&
+      chat?.members && 
+      chat.members.length === 2
+    );
+  };
+
+  // Helper function to get display name for a chat
+  const getChatDisplayName = async (chatData: any, currentUserId: string): Promise<string> => {
+    // Check if it's a direct chat (either explicitly marked or has exactly 2 members)
+    const isDirectChat = 
+      (chatData.type === 'direct' || (!chatData.type && chatData.members?.length === 2)) &&
+      chatData.members && 
+      chatData.members.length === 2;
+
+    if (isDirectChat) {
+      // Find the other user's ID (not the current user)
+      const otherUserId = chatData.members.find(
+        (memberId: string) => memberId !== currentUserId
+      );
+      
+      if (otherUserId) {
+        try {
+          // Fetch the other user's name from Users collection
+          const otherUserDoc = await firestore()
+            .collection('Users')
+            .doc(otherUserId)
+            .get();
+          
+          if (otherUserDoc.exists) {
+            const otherUserData = otherUserDoc.data();
+            // Use displayName, name, or email as fallback
+            return (
+              otherUserData?.displayName || 
+              otherUserData?.name || 
+              otherUserData?.email?.split('@')[0] || 
+              'Unknown User'
+            );
+          }
+        } catch (error) {
+          console.error('Error fetching other user name:', error);
+        }
+      }
+      // Fallback to stored name if we can't fetch the other user
+      return chatData.name || 'Direct Chat';
+    }
+
+    // For group chats, use the stored name
+    return chatData.name || 'Group Chat';
+  };
+
   const fetchChats = useCallback(
     async (showSpinner = true) => {
       if (!userId) {
@@ -150,7 +203,7 @@ const HomeScreen = () => {
         }
 
         // ⚡ OPTIMIZED: Process chat data without N+1 queries
-        const processedChats = snapshot.docs.map(doc => {
+        const processedChatsPromises = snapshot.docs.map(async (doc) => {
           const chatData: any = doc.data();
 
           // Use lastMessage from the document if available (optimization)
@@ -168,13 +221,19 @@ const HomeScreen = () => {
             }
           }
 
+          // Get display name (computes correct name for direct chats)
+          const displayName = await getChatDisplayName(chatData, userId);
+
           return {
             id: doc.id,
             ...chatData,
+            name: displayName, // Use computed display name
             lastMessage,
             unreadCount,
           };
         });
+
+        const processedChats = await Promise.all(processedChatsPromises);
 
         // Sort chats: pinned first, then by last message timestamp
         const sortedChats = processedChats.sort((a, b) => {
@@ -238,13 +297,13 @@ const HomeScreen = () => {
       .collection('GroupChats')
       .where('members', 'array-contains', userId)
       .onSnapshot(
-        snapshot => {
+        async snapshot => {
           console.log('📡 Chat update detected:', snapshot.size, 'chat(s)');
 
           const currentTime = new Date();
 
-          // Process the updates directly without fetching again
-          const processedChats = snapshot.docs.map(doc => {
+          // Process the updates asynchronously to compute display names
+          const processedChatsPromises = snapshot.docs.map(async doc => {
             const chatData: any = doc.data();
             const lastMessage = chatData.lastMessage || null;
             const unreadCount = chatData.unreadCounts?.[userId] || 0;
@@ -276,13 +335,19 @@ const HomeScreen = () => {
               }
             }
 
+            // Get display name (computes correct name for direct chats)
+            const displayName = await getChatDisplayName(chatData, userId);
+
             return {
               id: doc.id,
               ...chatData,
+              name: displayName, // Use computed display name
               lastMessage,
               unreadCount,
             };
           });
+
+          const processedChats = await Promise.all(processedChatsPromises);
 
           // Sort chats: pinned first, then by last message timestamp
           const sortedChats = processedChats.sort((a, b) => {
@@ -938,7 +1003,7 @@ const HomeScreen = () => {
                 <TouchableOpacity
                   style={[styles.optionButton, styles.deleteOptionButton]}
                   onPress={() => {
-                    console.log('Delete Group button pressed');
+                    console.log('Delete Chat button pressed');
                     hideModal();
                     showDeleteConfirmationModal();
                     // deleteGroupChat();
@@ -946,7 +1011,7 @@ const HomeScreen = () => {
                   activeOpacity={0.7}>
                   <Text style={styles.optionIcon}>⚠️</Text>
                   <Text style={[styles.optionText, styles.deleteOptionText]}>
-                    Delete Group
+                    {selectedChat && isDirectChat(selectedChat) ? 'Delete Chat' : 'Delete Group'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -983,7 +1048,9 @@ const HomeScreen = () => {
                   },
                 ]}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Delete Group?</Text>
+                  <Text style={styles.modalTitle}>
+                    {selectedChat && isDirectChat(selectedChat) ? 'Delete Chat?' : 'Delete Group?'}
+                  </Text>
                   <TouchableOpacity
                     onPress={hideDeleteConfirmationModal}
                     style={styles.closeButton}>

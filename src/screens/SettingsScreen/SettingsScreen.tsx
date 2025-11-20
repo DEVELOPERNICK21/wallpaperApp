@@ -1,31 +1,26 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React from 'react';
 import {FlatList, StyleSheet, Text, View} from 'react-native';
-import HomeHeader from '../../component/Header/HomeHeader.tsx';
 import {colors} from '../../assets/color';
-import MyStatusBar from '../../component/StatusBar.jsx';
-import {height, SECRET_KEY, width} from '../../assets/string.tsx';
-import {useDispatch, useSelector} from 'react-redux';
+import {height, width} from '../../assets/string.tsx';
+import {useSelector} from 'react-redux';
 import {RootState} from '../../redux/reducers/index.ts';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import CommonHeader from '../../component/Header/CommonHeader.tsx';
 import {
   ArrowRight_Icon,
-  Chevron_Icon,
   Logout_Icon,
-  Notification_Icon,
   NotificationSetting_Icon,
   PrivacySetting_Icon,
   TermSetting_Icon,
 } from '../../assets/icons/index.jsx';
 import NavigationTile from '../../component/Tiles/NavigationTile.tsx';
 import fonts from '../../assets/fonts/index.js';
+import ScreenConstants from '../../Routes/ScreenConstants';
 
 const SettingsScreen: React.FC = () => {
   const theme = useSelector((state: RootState) => state.theme);
 
   const navigation = useNavigation();
-
-  const dispatch = useDispatch();
 
   let headerData = {
     headerTitle: 'Setting',
@@ -33,22 +28,30 @@ const SettingsScreen: React.FC = () => {
 
   let settingData = [
     {
-      id: 0,
+      id: 'notifications',
       Icon: NotificationSetting_Icon,
       title: 'Notification',
       IconnTwo: ArrowRight_Icon,
+      onPress: () =>
+        navigation.navigate(
+          ScreenConstants?.NOTIFICATION_SETTINGS_SCREEN as never,
+        ),
     },
     {
-      id: 0,
-      Icon: TermSetting_Icon,
-      title: 'Terms & Condition',
-      IconnTwo: ArrowRight_Icon,
-    },
-    {
-      id: 0,
+      id: 'privacyControls',
       Icon: PrivacySetting_Icon,
-      title: 'Privacy Policy',
+      title: 'Privacy & Security Controls',
       IconnTwo: ArrowRight_Icon,
+      onPress: () =>
+        navigation.navigate(ScreenConstants?.PRIVACY_SECURITY_SCREEN as never),
+    },
+    {
+      id: 'policy',
+      Icon: TermSetting_Icon,
+      title: 'Privacy Policy & Acceptable Use',
+      IconnTwo: ArrowRight_Icon,
+      onPress: () =>
+        navigation.navigate(ScreenConstants?.PRIVACY_POLICY_SCREEN as never),
     },
   ];
 

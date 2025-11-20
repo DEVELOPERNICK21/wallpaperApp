@@ -14,7 +14,6 @@ import {PersistGate} from 'redux-persist/integration/react';
 import {store, persistor} from './src/redux/store';
 import Orientation from 'react-native-orientation-locker';
 import {height} from './src/assets/string';
-import messaging from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {PasswordScreen} from './src/screens';
 import {presenceTracker} from './src/utils/presenceTracker';

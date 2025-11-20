@@ -1,12 +1,7 @@
-import React, {useCallback, useEffect, useState} from 'react';
-import {FlatList, Platform, StyleSheet, Text, View} from 'react-native';
+import React from 'react';
+import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {colors} from '../../assets/color';
-import {height, SECRET_KEY, width} from '../../assets/string.tsx';
-import {
-  ArrowRight_Icon,
-  BlackNotificationBing_Icon,
-  Notification_Icon,
-} from '../../assets/icons/index.jsx';
+import {width} from '../../assets/string.tsx';
 import fonts from '../../assets/fonts/index.js';
 
 interface Alert {
@@ -15,6 +10,7 @@ interface Alert {
   name?: string; // optional field
   IconnTwo?: unknown; // optional field
   Icon?: unknown; // optional field
+  onPress?: () => void;
   // Add other fields as needed
 }
 
@@ -23,13 +19,34 @@ interface NavigationTileProps {
 }
 
 const NavigationTile: React.FC<NavigationTileProps> = ({item}) => {
-  return (
-    <View style={styles.tileWrapper}>
+  const Content = () => (
+    <>
       <View style={styles?.titleanndIcon}>
-        <item.Icon height={width / 20} width={width / 20} />
+        {item?.Icon ? (
+          <item.Icon height={width / 20} width={width / 20} />
+        ) : null}
         <Text style={styles?.textName}>{item?.title}</Text>
       </View>
-      <item.IconnTwo height={width / 20} width={width / 20} />
+      {item?.IconnTwo ? (
+        <item.IconnTwo height={width / 20} width={width / 20} />
+      ) : null}
+    </>
+  );
+
+  if (item?.onPress) {
+    return (
+      <TouchableOpacity
+        style={styles.tileWrapper}
+        onPress={item.onPress}
+        activeOpacity={0.8}>
+        <Content />
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={styles.tileWrapper}>
+      <Content />
     </View>
   );
 };

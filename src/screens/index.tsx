@@ -16,6 +16,7 @@ export {default as AlertScreen} from './AlertScreen/AlertScreen';
 export {default as ProfileScreen} from './ProfileScreen/ProfileScreen';
 export {default as SettingsScreen} from './SettingsScreen/SettingsScreen';
 export {default as PrivacySecurityScreen} from './SettingsScreen/PrivacySecurityScreen';
+export {default as PrivacyPolicyScreen} from './SettingsScreen/PrivacyPolicyScreen';
 export {default as PopUp} from './PopUp/PopUp';
 export {default as ChatScreen} from './ChatScreen/ChatScreen';
 export {default as NewChatRoom} from './NewChatRoom/NewChatRoom';

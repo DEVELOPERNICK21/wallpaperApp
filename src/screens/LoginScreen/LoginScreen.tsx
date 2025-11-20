@@ -36,6 +36,7 @@ import {storeUserDetails} from '../../reduxrf/actions/user.ts';
 
 import messaging from '@react-native-firebase/messaging';
 import firestore from '@react-native-firebase/firestore';
+import SubscriptionService from '../../services/SubscriptionService';
 
 const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
@@ -112,9 +113,20 @@ const LoginScreen: React.FC = () => {
       // Store user details in Redux
       dispatch(storeUserDetails(user));
 
+      // Check subscription status
+      const subscriptionStatus = await SubscriptionService.checkSubscriptionStatus(user.uid);
 
       // Update FCM token in Firestore
       await updateFCMToken(user.uid);
+
+      // If no active subscription, navigate to subscription screen
+      if (!subscriptionStatus.isActive) {
+        navigation.reset({
+          index: 0,
+          routes: [{name: ScreenConstants.SUBSCRIPTION_SCREEN}],
+        });
+        return;
+      }
 
       // Navigate to the next screen (adjust as needed)
       navigation.navigate(ScreenConstants.HOME_SCREEN);
