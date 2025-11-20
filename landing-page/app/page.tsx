@@ -104,11 +104,12 @@ const pricingPlans = [
   },
   {
     name: 'Agent',
-    price: '₹599',
+    price: '₹399',
     cadence: 'per month',
     tagline: 'Our most trusted tier—full stealth chat inside the wallpaper layer.',
     description:
       'Unlocks the complete hidden messenger: unlimited disguised chats, custom wallpaper covers, and instant rescue flows.',
+    originalPrice: '₹599',
     features: [
       'Unlimited wallpaper themes + custom decoy content library',
       'Stealth unlock gestures, panic wipe, and fake update timelines',
@@ -118,15 +119,16 @@ const pricingPlans = [
     isPrimary: true,
     ctaLabel: 'Secure with Agent',
     ctaHref: '/subscribe',
-    footnote: '72h early access to every disguise pack drop.',
+    footnote: 'Founders cut: locked at ₹399/mo for earliest adopters.',
   },
   {
     name: 'Black Ops',
-    price: '₹1,199',
+    price: '₹999',
     cadence: 'per month',
     tagline: 'For teams running coordinated hidden chats behind wallpapers.',
     description:
       'Adds orchestration so leads can manage multiple disguised messengers, revoke access, and sync evidence-free logs.',
+    originalPrice: '₹1,299',
     features: [
       'Multi-device hidden inbox sync + remote session revoke',
       'Admin dashboard with disguised invite links and audit trails',
@@ -134,7 +136,7 @@ const pricingPlans = [
     ],
     ctaLabel: 'Book a briefing',
     ctaHref: '#contact',
-    footnote: 'Limited seats each quarter. Includes white-glove onboarding.',
+    footnote: 'Founders cut: ₹999/mo or save 2 months with annual billing.',
   },
 ];
 
@@ -292,6 +294,14 @@ export default async function Home() {
               refund guarantee.
             </p>
           </div>
+          <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent p-6 text-center text-sm text-amber-50">
+            <p className="text-lg font-semibold text-amber-200">
+              Founder’s window: permanent price cut for early adopters
+            </p>
+            <p className="mt-2">
+              Agent now ₹399/mo (was ₹599) and Black Ops ₹999/mo (was ₹1,299). No coupon codes, no hidden upsell—lock the rate before we scale pricing in 2026.
+            </p>
+          </div>
           <div className="grid gap-6 lg:grid-cols-3">
             {pricingPlans.map(plan => (
               <article
@@ -316,6 +326,11 @@ export default async function Home() {
                     {plan.tagline}
                   </p>
                   <div className="flex items-baseline gap-2">
+                    {plan.originalPrice ? (
+                      <span className="text-sm text-slate-500 line-through">
+                        {plan.originalPrice}
+                      </span>
+                    ) : null}
                     <span className="text-4xl font-bold text-white">
                       {plan.price}
                     </span>
