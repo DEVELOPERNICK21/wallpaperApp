@@ -681,26 +681,84 @@ export default async function Home() {
 
       <footer
         id="contact"
-        className="border-t border-slate-800/80 bg-slate-950/90 py-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-base font-semibold text-white">Wallpaper Chat</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-500">
-              Discreet. Secure. Ready to deploy.
-            </p>
+        className="border-t border-slate-800/80 bg-slate-950/90 py-12">
+        <div className="mx-auto w-full max-w-6xl px-6">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3 mb-8">
+            {/* Brand Section */}
+            <div>
+              <p className="text-base font-semibold text-white mb-2">Wallpaper Chat</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500 mb-4">
+                Discreet. Secure. Ready to deploy.
+              </p>
+              <Link
+                href="mailto:founders@wallpaperchat.app"
+                className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                founders@wallpaperchat.app
+              </Link>
+            </div>
+
+            {/* Legal Links */}
+            <div>
+              <h3 className="text-sm font-semibold text-white mb-4">Legal</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link
+                    href="/terms"
+                    className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                    Terms and Conditions
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/privacy"
+                    className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/refund"
+                    className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                    Cancellation & Refund Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/shipping"
+                    className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                    Shipping Policy
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Support Links */}
+            <div>
+              <h3 className="text-sm font-semibold text-white mb-4">Support</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link
+                    href="/contact"
+                    className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                    Contact Us
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/subscribe"
+                    className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                    Subscription Plans
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 text-right sm:text-left">
-            <Link
-              href="mailto:founders@wallpaperchat.app"
-              className="hover:text-slate-200">
-              founders@wallpaperchat.app
-            </Link>
-            <p>Secure briefings available upon request.</p>
-            <Link
-              href="/privacy"
-              className="text-xs text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-slate-200">
-              Privacy Policy & Acceptable Use
-            </Link>
+
+          {/* Copyright */}
+          <div className="border-t border-slate-800/80 pt-6 text-center">
+            <p className="text-xs text-slate-500">
+              © {new Date().getFullYear()} Wallpaper Chat. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
