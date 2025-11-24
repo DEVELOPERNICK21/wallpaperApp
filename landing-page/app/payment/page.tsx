@@ -13,6 +13,22 @@ interface PlanDetails {
 }
 
 const plans: Record<string, PlanDetails> = {
+  basic: {
+    name: 'Basic',
+    price: 300, // Amount in paise (₹3)
+    originalPrice: 300,
+    savings: '',
+    features: [
+      'End-to-end encrypted messaging',
+      '1-on-1 & group chats (up to 10 members)',
+      '30-day message history',
+      'Standard wallpaper library',
+      'PIN lock & inactivity auto-lock',
+      'Disguised notifications',
+      'Basic privacy controls',
+      'Message search (last 30 days)',
+    ],
+  },
   premium: {
     name: 'Premium',
     price: 19900, // Amount in paise (₹199)
@@ -292,9 +308,11 @@ function PaymentPageContent() {
                     <h2 className="text-2xl font-bold text-white">
                       {plan.name} Plan
                     </h2>
-                    <span className="inline-block mt-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full">
-                      {plan.savings}
-                    </span>
+                    {plan.savings && (
+                      <span className="inline-block mt-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full">
+                        {plan.savings}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <div className="flex items-baseline gap-2">

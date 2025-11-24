@@ -89,8 +89,9 @@ const policyHighlights = [
 const pricingPlans = [
   {
     name: 'Basic',
-    price: 'Free',
-    priceSubtext: 'Forever',
+    price: '₹3',
+    cadence: 'per month',
+    priceSubtext: 'Affordable entry plan',
     features: [
       'End-to-end encrypted messaging',
       '1-on-1 & group chats (up to 10 members)',
@@ -107,7 +108,7 @@ const pricingPlans = [
       '30-day message retention',
     ],
     ctaHref: '/subscribe',
-    ctaLabel: 'Get Started Free',
+    ctaLabel: 'Subscribe to Basic',
     isPrimary: false,
     value: 'Perfect for trying out private messaging',
   },

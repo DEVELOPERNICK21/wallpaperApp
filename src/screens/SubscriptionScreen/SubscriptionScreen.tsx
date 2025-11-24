@@ -55,7 +55,7 @@ const SubscriptionScreen = ({navigation}: any) => {
     checkSubscription();
   }, [checkSubscription]);
 
-  const handleSubscribe = (planType?: 'premium' | 'pro') => {
+  const handleSubscribe = (planType?: 'basic' | 'premium' | 'pro') => {
     try {
       // Construct subscription URL with plan parameter
       const planParam = planType ? `?plan=${planType}` : '';
@@ -167,7 +167,7 @@ const SubscriptionScreen = ({navigation}: any) => {
 
             <TouchableOpacity
               style={styles.subscribeButton}
-              onPress={handleSubscribe}
+              onPress={() => handleSubscribe()}
               activeOpacity={0.8}>
               <Text style={styles.subscribeButtonText}>
                 Manage Subscription
@@ -207,9 +207,10 @@ const SubscriptionScreen = ({navigation}: any) => {
               <View style={styles.planCard}>
                 <Text style={styles.planName}>Basic</Text>
                 <View style={styles.priceContainer}>
-                  <Text style={styles.planPrice}>Free</Text>
-                  <Text style={styles.priceSubtext}>Forever</Text>
+                  <Text style={styles.planPrice}>₹3</Text>
+                  <Text style={styles.priceCadence}>/month</Text>
                 </View>
+                <Text style={styles.priceSubtext}>Affordable entry plan</Text>
                 <Text style={styles.planValue}>
                   Perfect for trying out private messaging
                 </Text>
@@ -227,6 +228,14 @@ const SubscriptionScreen = ({navigation}: any) => {
                     {'\n'}• 30-day message retention
                   </Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.planSubscribeButton}
+                  onPress={() => handleSubscribe('basic')}
+                  activeOpacity={0.8}>
+                  <Text style={styles.planSubscribeButtonText}>
+                    Subscribe to Basic
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* Premium Plan - Recommended */}
