@@ -47,10 +47,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {amount, currency = 'INR', planType, userId, userEmail} = body;
 
+    // Log received data for debugging
+    console.log('Received order creation request:', {
+      amount,
+      currency,
+      planType,
+      userId: userId?.substring(0, 20),
+      hasEmail: !!userEmail,
+    });
+
     // Validate required fields
     if (!amount || !planType || !userId) {
       return NextResponse.json(
-        {error: 'Missing required fields: amount, planType, userId'},
+        {
+          error: 'Missing required fields',
+          details: `Missing: ${!amount ? 'amount' : ''} ${
+            !planType ? 'planType' : ''
+          } ${!userId ? 'userId' : ''}`.trim(),
+        },
         {status: 400},
       );
     }
@@ -66,17 +80,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({error: 'Invalid amount'}, {status: 400});
     }
 
+    // Ensure amount is a number (not string)
+    const amountInPaise =
+      typeof amount === 'string' ? parseInt(amount, 10) : amount;
+
+    // Validate amount is a valid number
+    if (isNaN(amountInPaise) || amountInPaise < 100) {
+      return NextResponse.json(
+        {
+          error: 'Invalid amount',
+          details: 'Amount must be at least 100 paise (₹1)',
+        },
+        {status: 400},
+      );
+    }
+
+    // Create receipt ID (Razorpay has limits on receipt length)
+    const receiptId = `receipt_${userId.substring(
+      0,
+      20,
+    )}_${Date.now()}`.substring(0, 40);
+
     // Create Razorpay order
     const options = {
-      amount: amount, // Amount in paise
-      currency: currency,
-      receipt: `receipt_${userId}_${Date.now()}`,
+      amount: amountInPaise, // Amount in paise (must be number)
+      currency: currency.toUpperCase(), // Ensure uppercase (INR)
+      receipt: receiptId,
       notes: {
         planType: planType,
-        userId: userId,
-        userEmail: userEmail || '',
+        userId: userId.substring(0, 100), // Limit note length
+        userEmail: (userEmail || '').substring(0, 100),
       },
     };
+
+    console.log('Creating Razorpay order with options:', {
+      amount: options.amount,
+      currency: options.currency,
+      receipt: options.receipt,
+    });
 
     const order = await razorpay.orders.create(options);
 
@@ -91,10 +132,47 @@ export async function POST(request: NextRequest) {
       currency: order.currency,
       receipt: order.receipt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating Razorpay order:', error);
+
+    // Provide more specific error messages
+    let errorMessage = 'Failed to create order';
+    let errorDetails = 'Unknown error';
+    let statusCode: number | undefined;
+
+    if (error && typeof error === 'object') {
+      const err = error as {
+        message?: string;
+        statusCode?: number;
+        description?: string;
+      };
+      errorDetails = err.message || 'Unknown error';
+      statusCode = err.statusCode;
+
+      if (err.statusCode === 401) {
+        errorMessage = 'Authentication failed';
+        errorDetails =
+          'Invalid Razorpay keys. Please check your Key ID and Key Secret.';
+      } else if (err.statusCode === 400) {
+        errorMessage = 'Invalid request';
+        errorDetails =
+          err.description || err.message || 'Please check the payment details.';
+      } else if (
+        err.message?.includes('ECONNREFUSED') ||
+        err.message?.includes('network')
+      ) {
+        errorMessage = 'Network error';
+        errorDetails =
+          'Unable to connect to Razorpay. Please check your internet connection.';
+      }
+    }
+
     return NextResponse.json(
-      {error: 'Failed to create order', details: error.message},
+      {
+        error: errorMessage,
+        details: errorDetails,
+        statusCode: statusCode,
+      },
       {status: 500},
     );
   }

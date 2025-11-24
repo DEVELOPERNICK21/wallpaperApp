@@ -135,7 +135,12 @@ function PaymentPageContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create order');
+        // Show more detailed error message
+        const errorMessage = data.details 
+          ? `${data.error}: ${data.details}` 
+          : data.error || 'Failed to create order';
+        console.error('Order creation failed:', data);
+        throw new Error(errorMessage);
       }
 
       const {orderId, amount, currency} = data;
@@ -226,8 +231,15 @@ function PaymentPageContent() {
       razorpay.open();
     } catch (error: any) {
       console.error('Payment error:', error);
-      setError(error.message || 'Failed to initiate payment');
+      // Show detailed error message to user
+      const errorMessage = error.message || 'Failed to initiate payment';
+      setError(errorMessage);
       setLoading(false);
+      
+      // Log additional details for debugging
+      if (error.message?.includes('gateway not configured')) {
+        console.error('⚠️ Razorpay keys may not be configured correctly. Check environment variables.');
+      }
     }
   };
 
@@ -373,7 +385,13 @@ function PaymentPageContent() {
               {/* Error Message */}
               {error && (
                 <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
-                  <p className="text-red-400 text-sm">{error}</p>
+                  <p className="text-red-400 text-sm font-semibold mb-2">⚠️ Error</p>
+                  <p className="text-red-300 text-sm">{error}</p>
+                  {error.includes('gateway not configured') && (
+                    <p className="text-red-300 text-xs mt-2">
+                      Please check that Razorpay keys are properly configured in environment variables.
+                    </p>
+                  )}
                 </div>
               )}
 
