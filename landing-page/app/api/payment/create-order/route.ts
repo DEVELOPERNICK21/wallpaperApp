@@ -7,7 +7,7 @@ let razorpay: Razorpay | null = null;
 try {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  
+
   if (keyId && keySecret) {
     razorpay = new Razorpay({
       key_id: keyId,
@@ -22,9 +22,24 @@ export async function POST(request: NextRequest) {
   try {
     // Check if Razorpay is initialized
     if (!razorpay) {
-      console.error('Razorpay not initialized. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.');
+      const keyId = process.env.RAZORPAY_KEY_ID;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      console.error(
+        'Razorpay not initialized. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.',
+      );
+      console.error(
+        'Key ID present:',
+        !!keyId,
+        'Key Secret present:',
+        !!keySecret,
+      );
+      console.error('Key ID starts with:', keyId?.substring(0, 8));
       return NextResponse.json(
-        {error: 'Payment gateway not configured. Please contact support.'},
+        {
+          error: 'Payment gateway not configured. Please contact support.',
+          details:
+            'Razorpay keys are missing or invalid. Please check environment variables.',
+        },
         {status: 500},
       );
     }
@@ -65,7 +80,9 @@ export async function POST(request: NextRequest) {
 
     const order = await razorpay.orders.create(options);
 
-    console.log(`✅ Razorpay order created: ${order.id} for user ${userId}, plan: ${planType}`);
+    console.log(
+      `✅ Razorpay order created: ${order.id} for user ${userId}, plan: ${planType}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -82,4 +99,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

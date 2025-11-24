@@ -14,17 +14,34 @@ A marketing-ready landing site for the Wallpaper Chat product. Built with Next.j
 
 Create a `.env.local` file before running the project:
 
-```
+```bash
+# Razorpay Configuration (REQUIRED for payments)
+# For Production: Use Live Keys (rzp_live_...)
+# For Development: Use Test Keys (rzp_test_...)
+RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=your_live_secret_key_here
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxxx
+
+# Firebase Admin (REQUIRED for subscription management)
 FIREBASE_ADMIN_PROJECT_ID=your-project-id
 FIREBASE_ADMIN_CLIENT_EMAIL=service-account@your-project-id.iam.gserviceaccount.com
 # Keep the key on one line – replace actual newlines with \n
 FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_KEY_HERE\n-----END PRIVATE KEY-----\n"
+
 # Optional fallbacks/baselines when Firestore is unavailable
 NEXT_PUBLIC_SEEDED_USER_COUNT=2500
 NEXT_PUBLIC_USER_COUNT_BASELINE=0
-# iOS IPA download URL for QR code
+
+# Optional: iOS IPA download URL for QR code
 NEXT_PUBLIC_IPA_DOWNLOAD_URL=https://your-domain.com/wallpaper-chat.ipa
 ```
+
+**Important Notes:**
+
+- Replace `rzp_live_xxxxxxxxxxxxx` with your actual Razorpay Live Key ID
+- Replace `your_live_secret_key_here` with your actual Razorpay Live Key Secret
+- For Vercel deployment, add these same variables in Vercel Dashboard → Settings → Environment Variables
+- Never commit `.env.local` to git (it's already in `.gitignore`)
 
 - `fetchUserCount` queries the Firestore `Users` collection using the Admin SDK.
 - If credentials are missing or Firestore is unreachable, the counter falls back to the seeded values.

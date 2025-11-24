@@ -64,9 +64,11 @@ function PaymentPageContent() {
   useEffect(() => {
     // Get user ID from URL params or localStorage
     const urlUserId = searchParams.get('userId');
-    const storedUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-    
+    const storedUserId =
+      typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+    const storedEmail =
+      typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+
     if (urlUserId) {
       setUserId(urlUserId);
       if (typeof window !== 'undefined') {
@@ -89,8 +91,9 @@ function PaymentPageContent() {
     }
 
     // Generate a temporary user ID if not provided (for testing)
-    const finalUserId = userId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    const finalUserId =
+      userId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     if (!userId) {
       // Store temporary user ID for this session
       setUserId(finalUserId);
@@ -124,7 +127,9 @@ function PaymentPageContent() {
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
         console.error('Non-JSON response:', text);
-        throw new Error('Server returned an invalid response. Please check your API configuration.');
+        throw new Error(
+          'Server returned an invalid response. Please check your API configuration.',
+        );
       }
 
       const data = await response.json();
@@ -138,9 +143,17 @@ function PaymentPageContent() {
       // Store finalUserId in a variable accessible to handler
       const paymentUserId = finalUserId;
 
+      // Check if Razorpay key is configured
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!razorpayKey) {
+        throw new Error(
+          'Payment gateway not configured. Please contact support.',
+        );
+      }
+
       // Initialize Razorpay
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
+        key: razorpayKey,
         amount: amount,
         currency: currency,
         name: 'Wallpaper Chat',
@@ -170,11 +183,17 @@ function PaymentPageContent() {
             });
 
             // Check if response is JSON
-            const verifyContentType = verifyResponse.headers.get('content-type');
-            if (!verifyContentType || !verifyContentType.includes('application/json')) {
+            const verifyContentType =
+              verifyResponse.headers.get('content-type');
+            if (
+              !verifyContentType ||
+              !verifyContentType.includes('application/json')
+            ) {
               const text = await verifyResponse.text();
               console.error('Non-JSON response:', text);
-              throw new Error('Payment verification failed. Please contact support.');
+              throw new Error(
+                'Payment verification failed. Please contact support.',
+              );
             }
 
             const verifyData = await verifyResponse.json();
@@ -185,11 +204,15 @@ function PaymentPageContent() {
                 `/payment/success?paymentId=${response.razorpay_payment_id}&plan=${planType}`,
               );
             } else {
-              throw new Error(verifyData.error || 'Payment verification failed');
+              throw new Error(
+                verifyData.error || 'Payment verification failed',
+              );
             }
           } catch (error: any) {
             console.error('Payment verification error:', error);
-            router.push(`/payment/failed?error=${encodeURIComponent(error.message)}`);
+            router.push(
+              `/payment/failed?error=${encodeURIComponent(error.message)}`,
+            );
           }
         },
         modal: {
@@ -213,7 +236,9 @@ function PaymentPageContent() {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Invalid Plan</h1>
-          <p className="text-slate-400 mb-6">The selected plan is not available.</p>
+          <p className="text-slate-400 mb-6">
+            The selected plan is not available.
+          </p>
           <a
             href="/subscribe"
             className="inline-block px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
@@ -244,13 +269,17 @@ function PaymentPageContent() {
 
             <div className="bg-slate-900/70 border border-slate-700 rounded-2xl p-8">
               <h1 className="text-3xl font-bold mb-2">Complete Your Payment</h1>
-              <p className="text-slate-400 mb-8">Review your plan details and proceed to payment</p>
+              <p className="text-slate-400 mb-8">
+                Review your plan details and proceed to payment
+              </p>
 
               {/* Plan Summary */}
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-white">{plan.name} Plan</h2>
+                    <h2 className="text-2xl font-bold text-white">
+                      {plan.name} Plan
+                    </h2>
                     <span className="inline-block mt-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full">
                       {plan.savings}
                     </span>
@@ -260,17 +289,23 @@ function PaymentPageContent() {
                       <span className="text-lg text-slate-500 line-through">
                         ₹{plan.originalPrice / 100}
                       </span>
-                      <span className="text-3xl font-bold text-white">₹{plan.price / 100}</span>
+                      <span className="text-3xl font-bold text-white">
+                        ₹{plan.price / 100}
+                      </span>
                     </div>
                     <p className="text-sm text-slate-400 mt-1">per month</p>
                   </div>
                 </div>
 
                 <div className="border-t border-slate-700 pt-4 mt-4">
-                  <h3 className="text-sm font-semibold text-slate-300 mb-3">What's included:</h3>
+                  <h3 className="text-sm font-semibold text-slate-300 mb-3">
+                    What's included:
+                  </h3>
                   <ul className="space-y-2">
                     {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-3 text-sm text-slate-300">
+                      <li
+                        key={index}
+                        className="flex items-start gap-3 text-sm text-slate-300">
                         <svg
                           className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400"
                           fill="none"
@@ -329,7 +364,8 @@ function PaymentPageContent() {
                     autoComplete="off"
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    If you're coming from the mobile app, the User ID will be passed automatically.
+                    If you're coming from the mobile app, the User ID will be
+                    passed automatically.
                   </p>
                 </div>
               )}
@@ -352,17 +388,43 @@ function PaymentPageContent() {
               {/* Security Notice */}
               <div className="mt-6 text-center">
                 <p className="text-xs text-slate-500">
-                  🔒 Secure payment powered by Razorpay. Your payment information is encrypted and
-                  secure.
+                  🔒 Secure payment powered by Razorpay. Your payment
+                  information is encrypted and secure.
                 </p>
-                {process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.includes('test') && (
+                {process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.includes('test') ? (
                   <div className="mt-4 p-3 bg-amber-500/20 border border-amber-500/50 rounded-lg">
-                    <p className="text-xs text-amber-400 font-semibold mb-2">🧪 Test Mode Active</p>
+                    <p className="text-xs text-amber-400 font-semibold mb-2">
+                      🧪 Test Mode Active
+                    </p>
                     <p className="text-xs text-amber-300">
-                      Use test card: <code className="bg-slate-800 px-2 py-1 rounded">4111 1111 1111 1111</code>
+                      Use test card:{' '}
+                      <code className="bg-slate-800 px-2 py-1 rounded">
+                        4111 1111 1111 1111
+                      </code>
                     </p>
                     <p className="text-xs text-amber-300 mt-1">
                       Any CVV and future expiry date will work.
+                    </p>
+                  </div>
+                ) : process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.includes(
+                    'live',
+                  ) ? (
+                  <div className="mt-4 p-3 bg-emerald-500/20 border border-emerald-500/50 rounded-lg">
+                    <p className="text-xs text-emerald-400 font-semibold mb-2">
+                      ✅ Live Mode Active
+                    </p>
+                    <p className="text-xs text-emerald-300">
+                      Real payments will be processed. All transactions are
+                      secure and encrypted.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                    <p className="text-xs text-red-400 font-semibold mb-2">
+                      ⚠️ Payment Gateway Not Configured
+                    </p>
+                    <p className="text-xs text-red-300">
+                      Please configure Razorpay keys in environment variables.
                     </p>
                   </div>
                 )}
@@ -406,4 +468,3 @@ export default function PaymentPage() {
     </Suspense>
   );
 }
-
