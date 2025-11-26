@@ -12,6 +12,8 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import {useSelector, useDispatch} from 'react-redux';
 import {useNavigation} from '@react-navigation/native';
@@ -57,6 +59,11 @@ const EnhancedProfileScreen = () => {
     appOpens: 0,
   });
   const [usageLoading, setUsageLoading] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [reauthVisible, setReauthVisible] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [reauthError, setReauthError] = useState('');
+  const [reauthProcessing, setReauthProcessing] = useState(false);
 
   // Animations
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -230,6 +237,15 @@ const EnhancedProfileScreen = () => {
     }
   };
 
+  const resetToLogin = () => {
+    const parentNav = (navigation as any)?.getParent?.();
+    const targetNav = parentNav || navigation;
+    targetNav.reset({
+      index: 0,
+      routes: [{name: ScreenConstants.LOGIN_SCREEN}],
+    });
+  };
+
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       {text: 'Cancel', style: 'cancel'},
@@ -244,10 +260,7 @@ const EnhancedProfileScreen = () => {
             dispatch(setLogOut());
 
             // Reset navigation to login screen
-            navigation.reset({
-              index: 0,
-              routes: [{name: ScreenConstants.LOGIN_SCREEN}],
-            });
+            resetToLogin();
           } catch (error) {
             console.error('Logout error:', error);
             Alert.alert('Error', 'Failed to logout. Please try again.');
@@ -255,6 +268,111 @@ const EnhancedProfileScreen = () => {
         },
       },
     ]);
+  };
+
+  const confirmDeleteAccount = () => {
+    if (deletingAccount) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete account',
+      'This will permanently remove your profile, subscription, and chat data. This action cannot be undone.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: deletingAccount ? 'Deleting…' : 'Delete',
+          style: 'destructive',
+          onPress: handleDeleteAccount,
+        },
+      ],
+    );
+  };
+
+  const handleDeleteAccount = async () => {
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      Alert.alert('Deletion failed', 'No active user session found.');
+      return;
+    }
+
+    const uid = currentUser.uid;
+
+    try {
+      setDeletingAccount(true);
+
+      try {
+        await SubscriptionService.cancelSubscription(uid);
+      } catch (error) {
+        console.warn('subscription cancellation failed (non-blocking)', error);
+      }
+
+      try {
+        await firestore().collection('Users').doc(uid).delete();
+      } catch (error) {
+        console.warn('user profile deletion failed (non-blocking)', error);
+      }
+
+      await currentUser.delete();
+      await removeUserData();
+      dispatch(setLogOut());
+
+      Alert.alert('Account deleted', 'Your account has been permanently removed.');
+      resetToLogin();
+    } catch (error: any) {
+      console.error('Account deletion error:', error);
+
+      if (error?.code === 'auth/requires-recent-login') {
+        setReauthVisible(true);
+        setReauthPassword('');
+        setReauthError('');
+      } else {
+        Alert.alert(
+          'Deletion failed',
+          'We could not delete your account. Please try again in a moment.',
+        );
+      }
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const handleReauthCancel = () => {
+    if (reauthProcessing) return;
+    setReauthVisible(false);
+    setReauthPassword('');
+    setReauthError('');
+  };
+
+  const handleReauthConfirm = async () => {
+    const currentUser = auth().currentUser;
+    if (!currentUser || !currentUser.email) {
+      setReauthError('Session expired. Please log in again.');
+      return;
+    }
+
+    if (!reauthPassword.trim()) {
+      setReauthError('Please enter your password.');
+      return;
+    }
+
+    try {
+      setReauthProcessing(true);
+      const credential = auth.EmailAuthProvider.credential(
+        currentUser.email,
+        reauthPassword.trim(),
+      );
+      await currentUser.reauthenticateWithCredential(credential);
+      setReauthVisible(false);
+      setReauthPassword('');
+      setReauthError('');
+      await handleDeleteAccount();
+    } catch (error: any) {
+      console.error('Re-authentication failed:', error);
+      setReauthError('Incorrect password. Please try again.');
+    } finally {
+      setReauthProcessing(false);
+    }
   };
 
   const menuItems = [
@@ -306,14 +424,6 @@ const EnhancedProfileScreen = () => {
       onPress: () =>
         navigation.navigate(ScreenConstants.PRIVACY_SECURITY_SCREEN as never),
       color: '#8b5cf6',
-    },
-    {
-      id: 'logout',
-      icon: '🚪',
-      title: 'Logout',
-      subtitle: 'Sign out of your account',
-      onPress: () => handleLogout(),
-      color: '#dc2626',
     },
   ];
 
@@ -582,67 +692,105 @@ const EnhancedProfileScreen = () => {
         {/* Menu Items */}
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Settings</Text>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.menuItem,
-                item.id === 'logout' && styles.menuItemLogout,
-              ]}
-              onPress={item.onPress}
-              activeOpacity={0.7}>
-              <Animated.View
-                style={[
-                  styles.menuItemContent,
-                  item.id === 'logout' && styles.menuItemContentLogout,
-                  {
-                    opacity: fadeAnim,
-                    transform: [
-                      {
-                        translateY: slideAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [(index + 1) * 20, 0],
-                        }),
-                      },
-                    ],
-                  },
-                ]}>
-                <View
+          {menuItems.map((item, index) => {
+            const isDangerItem =
+              item.id === 'logout' || item.id === 'delete-account';
+            const isDisabled = Boolean(item.disabled);
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuItem, isDangerItem && styles.menuItemLogout]}
+                onPress={item.onPress}
+                activeOpacity={0.7}
+                disabled={isDisabled}>
+                <Animated.View
                   style={[
-                    styles.menuIconContainer,
+                    styles.menuItemContent,
+                    isDangerItem && styles.menuItemContentLogout,
                     {
-                      backgroundColor: `${item.color}20`,
+                      opacity: fadeAnim,
+                      transform: [
+                        {
+                          translateY: slideAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [(index + 1) * 20, 0],
+                          }),
+                        },
+                      ],
                     },
-                    item.id === 'logout' && styles.menuIconContainerLogout,
                   ]}>
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
-                </View>
-                <View style={styles.menuTextContainer}>
+                  <View
+                    style={[
+                      styles.menuIconContainer,
+                      {
+                        backgroundColor: `${item.color}20`,
+                      },
+                      isDangerItem && styles.menuIconContainerLogout,
+                    ]}>
+                    <Text style={styles.menuIcon}>{item.icon}</Text>
+                  </View>
+                  <View style={styles.menuTextContainer}>
+                    <Text
+                      style={[
+                        styles.menuTitle,
+                        isDangerItem && styles.menuTitleLogout,
+                      ]}>
+                      {item.title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.menuSubtitle,
+                        isDangerItem && styles.menuSubtitleLogout,
+                      ]}>
+                      {item.subtitle}
+                    </Text>
+                  </View>
                   <Text
                     style={[
-                      styles.menuTitle,
-                      item.id === 'logout' && styles.menuTitleLogout,
+                      styles.menuArrow,
+                      isDangerItem && styles.menuArrowLogout,
                     ]}>
-                    {item.title}
+                    ›
                   </Text>
-                  <Text
-                    style={[
-                      styles.menuSubtitle,
-                      item.id === 'logout' && styles.menuSubtitleLogout,
-                    ]}>
-                    {item.subtitle}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.menuArrow,
-                    item.id === 'logout' && styles.menuArrowLogout,
-                  ]}>
-                  ›
-                </Text>
-              </Animated.View>
-            </TouchableOpacity>
-          ))}
+                </Animated.View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.dangerSection}>
+          <Text style={styles.sectionTitleDanger}>Danger zone</Text>
+          <TouchableOpacity
+            style={styles.dangerButton}
+            onPress={handleLogout}
+            activeOpacity={0.75}>
+            <View style={styles.dangerButtonTextWrap}>
+              <Text style={styles.dangerButtonTitle}>Logout</Text>
+              <Text style={styles.dangerButtonSubtitle}>
+                Sign out of this device
+              </Text>
+            </View>
+            <Text style={styles.dangerButtonIcon}>↗</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.dangerButton,
+              styles.dangerButtonDelete,
+              deletingAccount && styles.dangerButtonDisabled,
+            ]}
+            onPress={confirmDeleteAccount}
+            activeOpacity={0.75}
+            disabled={deletingAccount}>
+            <View style={styles.dangerButtonTextWrap}>
+              <Text style={styles.dangerButtonTitle}>Delete account</Text>
+              <Text style={styles.dangerButtonSubtitle}>
+                Permanently erase your profile and data
+              </Text>
+            </View>
+            <Text style={styles.dangerButtonIcon}>🗑️</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Logout Button */}
@@ -659,6 +807,52 @@ const EnhancedProfileScreen = () => {
         {/* App Version */}
         <Text style={styles.versionText}>Version 1.0.0</Text>
       </ScrollView>
+      <Modal
+        visible={reauthVisible}
+        transparent
+        statusBarTranslucent
+        animationType="fade"
+        onRequestClose={handleReauthCancel}>
+        <View style={styles.modalOverlayFull}>
+          <View style={styles.reauthCard}>
+            <Text style={styles.reauthTitle}>Confirm your password</Text>
+            <Text style={styles.reauthSubtitle}>
+              For your security, please re-enter your password to delete your
+              account.
+            </Text>
+            <TextInput
+              style={styles.reauthInput}
+              value={reauthPassword}
+              onChangeText={text => {
+                setReauthPassword(text);
+                setReauthError('');
+              }}
+              secureTextEntry
+              placeholder="Password"
+              placeholderTextColor="#94a3b8"
+            />
+            {reauthError ? (
+              <Text style={styles.reauthError}>{reauthError}</Text>
+            ) : null}
+            <View style={styles.reauthActions}>
+              <TouchableOpacity
+                style={[styles.reauthButton, styles.reauthCancel]}
+                onPress={handleReauthCancel}
+                disabled={reauthProcessing}>
+                <Text style={styles.reauthCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.reauthButton, styles.reauthConfirm]}
+                onPress={handleReauthConfirm}
+                disabled={reauthProcessing}>
+                <Text style={styles.reauthConfirmText}>
+                  {reauthProcessing ? 'Deleting...' : 'Delete'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -894,6 +1088,129 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  dangerSection: {
+    marginHorizontal: 20,
+    marginTop: 28,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#4c0519',
+    backgroundColor: '#1f0a17',
+  },
+  sectionTitleDanger: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fda4af',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 14,
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#2c0f1f',
+    borderWidth: 1,
+    borderColor: '#f87171',
+    marginBottom: 12,
+  },
+  dangerButtonDelete: {
+    backgroundColor: '#450a0a',
+    borderColor: '#dc2626',
+  },
+  dangerButtonDisabled: {
+    opacity: 0.5,
+  },
+  dangerButtonTextWrap: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  dangerButtonTitle: {
+    color: '#fee2e2',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  dangerButtonSubtitle: {
+    color: '#fca5a5',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  dangerButtonIcon: {
+    fontSize: 18,
+    color: '#fecdd3',
+  },
+  modalOverlayFull: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  reauthCard: {
+    width: '100%',
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#1f2937',
+  },
+  reauthTitle: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  reauthSubtitle: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  reauthInput: {
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#e2e8f0',
+    fontSize: 15,
+  },
+  reauthError: {
+    color: '#f87171',
+    marginTop: 8,
+    fontSize: 13,
+  },
+  reauthActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 20,
+    gap: 12,
+  },
+  reauthButton: {
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  reauthCancel: {
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  reauthConfirm: {
+    backgroundColor: '#dc2626',
+  },
+  reauthCancelText: {
+    color: '#cbd5f5',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  reauthConfirmText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   versionText: {
     textAlign: 'center',

@@ -56,10 +56,22 @@ const SubscriptionScreen = ({navigation}: any) => {
   }, [checkSubscription]);
 
   const handleSubscribe = (planType?: 'basic' | 'premium' | 'pro') => {
+    if (!userId) {
+      Alert.alert(
+        'Sign in required',
+        'Please log in so we can link the payment to your account.',
+      );
+      return;
+    }
+
+    const queryParams: string[] = [`userId=${encodeURIComponent(userId)}`];
+    if (planType) {
+      queryParams.push(`plan=${encodeURIComponent(planType)}`);
+    }
+    const queryString = queryParams.length ? `?${queryParams.join('&')}` : '';
     try {
-      // Construct subscription URL with plan parameter
-      const planParam = planType ? `?plan=${planType}` : '';
-      const subscriptionUrl = `${LANDING_PAGE_CONFIG.BASE_URL}${LANDING_PAGE_CONFIG.SUBSCRIBE_PATH}${planParam}`;
+      // Construct subscription URL with plan + user identifiers
+      const subscriptionUrl = `${LANDING_PAGE_CONFIG.BASE_URL}${LANDING_PAGE_CONFIG.SUBSCRIBE_PATH}${queryString}`;
 
       console.log('Opening subscription URL:', subscriptionUrl);
 

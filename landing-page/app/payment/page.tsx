@@ -106,17 +106,18 @@ function PaymentPageContent() {
       return;
     }
 
-    // Generate a temporary user ID if not provided (for testing)
-    const finalUserId =
-      userId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const trimmedUserId = userId.trim();
+    if (!trimmedUserId) {
+      setError(
+        'Please enter your Wallpaper Chat User ID so we can apply the plan to the correct account.',
+      );
+      return;
+    }
 
-    if (!userId) {
-      // Store temporary user ID for this session
-      setUserId(finalUserId);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('userId', finalUserId);
-        localStorage.setItem('userEmail', userEmail);
-      }
+    const finalUserId = trimmedUserId;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('userId', finalUserId);
+      localStorage.setItem('userEmail', userEmail);
     }
 
     setLoading(true);
@@ -374,31 +375,29 @@ function PaymentPageContent() {
                 />
               </div>
 
-              {/* User ID Input (Optional - for testing) */}
-              {!userId && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    User ID (Optional - will be auto-generated if not provided)
-                  </label>
-                  <input
-                    type="text"
-                    value={userId}
-                    onChange={e => {
-                      setUserId(e.target.value);
-                      if (typeof window !== 'undefined') {
-                        localStorage.setItem('userId', e.target.value);
-                      }
-                    }}
-                    placeholder="Leave empty for auto-generation"
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    autoComplete="off"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    If you're coming from the mobile app, the User ID will be
-                    passed automatically.
-                  </p>
-                </div>
-              )}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Wallpaper Chat User ID <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={userId}
+                  onChange={e => {
+                    setUserId(e.target.value);
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('userId', e.target.value);
+                    }
+                  }}
+                  placeholder="e.g. uid_xxxxxxxx (Profile → Subscription section)"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Find this inside the mobile app under Profile → Subscription.
+                  We need it to activate the correct account. If you tapped a
+                  plan from the app, it will be pre-filled automatically.
+                </p>
+              </div>
 
               {/* Error Message */}
               {error && (
@@ -416,7 +415,12 @@ function PaymentPageContent() {
               {/* Payment Button */}
               <button
                 onClick={handlePayment}
-                disabled={loading || !userEmail || !userEmail.includes('@')}
+                disabled={
+                  loading ||
+                  !userEmail ||
+                  !userEmail.includes('@') ||
+                  !userId.trim()
+                }
                 className="w-full bg-purple-500 text-white py-4 rounded-lg font-semibold text-lg hover:bg-purple-600 disabled:bg-slate-700 disabled:cursor-not-allowed transition-all">
                 {loading ? 'Processing...' : `Pay ₹${plan.price / 100}`}
               </button>

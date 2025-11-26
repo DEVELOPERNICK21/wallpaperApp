@@ -18,6 +18,7 @@ import {
   Dimensions,
   Modal,
   PanResponder,
+  ActivityIndicator,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -28,6 +29,8 @@ import {width, height} from '../../assets/string';
 import fonts from '../../assets/fonts';
 import {presenceTracker, formatLastSeen} from '../../utils/presenceTracker';
 import AIMessageService, {MESSAGE_STYLES} from '../../services/AIMessageService';
+import {useSubscription} from '../../hooks/useSubscription';
+import SubscriptionRequiredView from '../../component/SubscriptionRequiredView';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -77,6 +80,14 @@ const ChatScreen = ({route, navigation}) => {
   const snapshotUpdateTimeoutRef = useRef(null);
   const pendingSnapshotRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const {
+    subscriptionStatus,
+    loading: subscriptionLoading,
+    isActive,
+    refresh: refreshSubscription,
+  } = useSubscription();
+  const hasChatAccess =
+    isActive && subscriptionStatus?.subscriptionType !== 'free';
 
   // Helper function to get initials for avatar
   const getInitials = name => {
@@ -1545,10 +1556,10 @@ const ChatScreen = ({route, navigation}) => {
           const tokens = [];
           for (const memberId of members) {
             if (memberId !== currentUser.uid) {
-              const userDoc = await firestore()
-                .collection('users')
-                .doc(memberId)
-                .get();
+          const userDoc = await firestore()
+            .collection('Users')
+            .doc(memberId)
+            .get();
               if (userDoc.exists && userDoc.data().fcmToken) {
                 tokens.push(userDoc.data().fcmToken);
               }
@@ -1791,6 +1802,27 @@ const ChatScreen = ({route, navigation}) => {
       </View>
     );
   }, [messages, currentUser.uid, searchQuery]);
+
+  if (subscriptionLoading) {
+    return (
+      <SafeAreaView style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={colors.primaryColor} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasChatAccess) {
+    return (
+      <SafeAreaView style={styles.blockedContainer}>
+        <SubscriptionRequiredView
+          featureName="chat with contacts"
+          subscriptionStatus={subscriptionStatus}
+          loading={subscriptionLoading}
+          onRefresh={refreshSubscription}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -2980,6 +3012,16 @@ const ChatScreen = ({route, navigation}) => {
 };
 
 const styles = StyleSheet.create({
+  blockedContainer: {
+    flex: 1,
+    backgroundColor: colors?.screenBackColor || '#0f172a',
+  },
+  loaderContainer: {
+    flex: 1,
+    backgroundColor: colors?.screenBackColor || '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#0f172a',

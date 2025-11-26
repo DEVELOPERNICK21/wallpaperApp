@@ -22,6 +22,8 @@ import {useNavigation} from '@react-navigation/native';
 import {colors} from '../../assets/color';
 import fonts from '../../assets/fonts';
 import ScreenConstants from '../../Routes/ScreenConstants';
+import {useSubscription} from '../../hooks/useSubscription';
+import SubscriptionRequiredView from '../../component/SubscriptionRequiredView';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -35,6 +37,14 @@ const CreateGroupChatImproved = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const navigation = useNavigation();
   const currentUser = auth().currentUser;
+  const {
+    subscriptionStatus,
+    loading: subscriptionLoading,
+    isActive,
+    refresh: refreshSubscription,
+  } = useSubscription();
+  const hasChatAccess =
+    isActive && subscriptionStatus?.subscriptionType !== 'free';
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -42,6 +52,14 @@ const CreateGroupChatImproved = () => {
 
   // Search users by email or name
   const handleSearch = async () => {
+    if (!hasChatAccess) {
+      Alert.alert(
+        'Subscription required',
+        'Renew your plan to search and add new chats.',
+      );
+      return;
+    }
+
     if (searchQuery.trim().length < 2) {
       Alert.alert('Search', 'Please enter at least 2 characters');
       setSearching(false); // Ensure searching state is reset
@@ -182,6 +200,14 @@ const CreateGroupChatImproved = () => {
 
   // Create group chat
   const handleCreateGroup = async () => {
+    if (!hasChatAccess) {
+      Alert.alert(
+        'Subscription required',
+        'Renew your plan to continue creating groups.',
+      );
+      return;
+    }
+
     if (selectedUsers.length === 0) {
       Alert.alert('Error', 'Please select at least one user');
       return;
@@ -211,6 +237,14 @@ const CreateGroupChatImproved = () => {
   };
 
   const confirmCreateGroup = async () => {
+    if (!hasChatAccess) {
+      Alert.alert(
+        'Subscription required',
+        'An active plan is needed to finalize this group.',
+      );
+      return;
+    }
+
     if (!groupName.trim()) {
       Alert.alert('Error', 'Please enter a group name');
       return;
@@ -314,6 +348,27 @@ const CreateGroupChatImproved = () => {
       </View>
     );
   };
+
+  if (subscriptionLoading) {
+    return (
+      <SafeAreaView style={styles.loaderContainer}>
+        <ActivityIndicator color={colors.primaryColor} size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasChatAccess) {
+    return (
+      <SafeAreaView style={styles.blockedContainer}>
+        <SubscriptionRequiredView
+          featureName="create secret groups"
+          subscriptionStatus={subscriptionStatus}
+          loading={subscriptionLoading}
+          onRefresh={refreshSubscription}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -495,6 +550,16 @@ const CreateGroupChatImproved = () => {
 };
 
 const styles = StyleSheet.create({
+  blockedContainer: {
+    flex: 1,
+    backgroundColor: colors.screenBackColor,
+  },
+  loaderContainer: {
+    flex: 1,
+    backgroundColor: colors.screenBackColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#0f172a',

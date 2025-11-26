@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
@@ -23,6 +24,8 @@ import {removeUserData} from '../../utils/asynstorage';
 import {RootState} from '../../reduxrf/reducers';
 import auth from '@react-native-firebase/auth';
 import {UserFace_Icon} from '../../assets/icons';
+import {useSubscription} from '../../hooks/useSubscription';
+import {ShowInfoMessage} from '../../component/FlashMessage/FlashMessage';
 
 const HomeScreen = () => {
   const [chats, setChats] = useState([]);
@@ -32,6 +35,33 @@ const HomeScreen = () => {
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [newMessageChats, setNewMessageChats] = useState(new Set());
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const {
+    subscriptionStatus,
+    loading: subscriptionLoading,
+    isActive,
+  } = useSubscription();
+  const hasChatAccess =
+    isActive && subscriptionStatus?.subscriptionType !== 'free';
+
+  const notifySubscriptionBlock = useCallback((contextMessage?: string) => {
+    ShowInfoMessage(
+      contextMessage || 'Subscribe to unlock messaging and creation features.',
+    );
+  }, []);
+
+  const ensureChatAccess = useCallback(
+    (contextMessage?: string) => {
+      if (hasChatAccess) {
+        return true;
+      }
+
+      if (!subscriptionLoading) {
+        notifySubscriptionBlock(contextMessage);
+      }
+      return false;
+    },
+    [hasChatAccess, notifySubscriptionBlock, subscriptionLoading],
+  );
 
   // Helper function to get initials from name or email
   const getInitials = (name?: string) => {
@@ -53,10 +83,10 @@ const HomeScreen = () => {
   const userId = user?.user?.uid || authUserId || null;
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const headerAnim = useRef(new Animated.Value(0)).current;
-  const floatButtonAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(1)).current;
+  const floatButtonAnim = useRef(new Animated.Value(1)).current;
   const modalAnim = useRef(new Animated.Value(0)).current;
   const deleteModalAnim = useRef(new Animated.Value(0)).current;
 
@@ -123,26 +153,31 @@ const HomeScreen = () => {
   // Helper function to check if a chat is a direct chat
   const isDirectChat = (chat: any): boolean => {
     return (
-      (chat?.type === 'direct' || (!chat?.type && chat?.members?.length === 2)) &&
-      chat?.members && 
+      (chat?.type === 'direct' ||
+        (!chat?.type && chat?.members?.length === 2)) &&
+      chat?.members &&
       chat.members.length === 2
     );
   };
 
   // Helper function to get display name for a chat
-  const getChatDisplayName = async (chatData: any, currentUserId: string): Promise<string> => {
+  const getChatDisplayName = async (
+    chatData: any,
+    currentUserId: string,
+  ): Promise<string> => {
     // Check if it's a direct chat (either explicitly marked or has exactly 2 members)
-    const isDirectChat = 
-      (chatData.type === 'direct' || (!chatData.type && chatData.members?.length === 2)) &&
-      chatData.members && 
+    const isDirectChat =
+      (chatData.type === 'direct' ||
+        (!chatData.type && chatData.members?.length === 2)) &&
+      chatData.members &&
       chatData.members.length === 2;
 
     if (isDirectChat) {
       // Find the other user's ID (not the current user)
       const otherUserId = chatData.members.find(
-        (memberId: string) => memberId !== currentUserId
+        (memberId: string) => memberId !== currentUserId,
       );
-      
+
       if (otherUserId) {
         try {
           // Fetch the other user's name from Users collection
@@ -150,14 +185,14 @@ const HomeScreen = () => {
             .collection('Users')
             .doc(otherUserId)
             .get();
-          
+
           if (otherUserDoc.exists) {
             const otherUserData = otherUserDoc.data();
             // Use displayName, name, or email as fallback
             return (
-              otherUserData?.displayName || 
-              otherUserData?.name || 
-              otherUserData?.email?.split('@')[0] || 
+              otherUserData?.displayName ||
+              otherUserData?.name ||
+              otherUserData?.email?.split('@')[0] ||
               'Unknown User'
             );
           }
@@ -177,6 +212,9 @@ const HomeScreen = () => {
     async (showSpinner = true) => {
       if (!userId) {
         console.log('⚠️ No user UID found, cannot fetch chats');
+        if (showSpinner) {
+          setRefreshing(false);
+        }
         return;
       }
 
@@ -203,7 +241,7 @@ const HomeScreen = () => {
         }
 
         // ⚡ OPTIMIZED: Process chat data without N+1 queries
-        const processedChatsPromises = snapshot.docs.map(async (doc) => {
+        const processedChatsPromises = snapshot.docs.map(async doc => {
           const chatData: any = doc.data();
 
           // Use lastMessage from the document if available (optimization)
@@ -283,13 +321,17 @@ const HomeScreen = () => {
     if (userId) {
       console.log('🚀 Initial fetch on mount');
       fetchChats(false);
+    } else {
+      setChats([]);
     }
   }, [userId, fetchChats]); // Only run when user becomes available
 
   // Real-time listener for chats to detect new chats immediately
   // ⚡ OPTIMIZED: Listen to GroupChat documents directly for lastMessage updates
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      return;
+    }
 
     console.log('👂 Setting up real-time listener for chats');
 
@@ -380,7 +422,7 @@ const HomeScreen = () => {
       console.log('🧹 Cleaning up chats listener');
       unsubscribe();
     };
-  }, [userId]);
+  }, [userId, hasChatAccess]);
 
   useFocusEffect(
     useCallback(() => {
@@ -411,7 +453,22 @@ const HomeScreen = () => {
     }
   };
 
+  const openSubscriptionScreen = useCallback(() => {
+    navigation.navigate(ScreenConstants.SUBSCRIPTION_SCREEN as never);
+  }, [navigation]);
+
+  const handleCreateGroupPress = useCallback(() => {
+    if (!ensureChatAccess('Subscribe to create new group chats.')) {
+      return;
+    }
+    navigation.navigate(ScreenConstants?.CREATE_GROUP_CHAT as never);
+  }, [ensureChatAccess, navigation]);
+
   const openChat = chat => {
+    if (!ensureChatAccess('Activate a subscription to open chats.')) {
+      return;
+    }
+
     if (!chat || !chat.id) {
       console.error('Chat data is undefined or invalid', chat);
       return;
@@ -782,16 +839,27 @@ const HomeScreen = () => {
         item={item}
         onPress={() => openChat(item)}
         onLongPress={() => {
+          if (!ensureChatAccess('Subscribe to manage chats.')) {
+            return;
+          }
           setSelectedChat(item);
           showModal();
         }}
       />
     ),
-    [openChat, showModal],
+    [openChat, showModal, ensureChatAccess],
   );
 
   // ⚡ OPTIMIZED: Extract key for better FlatList performance
   const keyExtractor = useCallback((item: any) => item.id, []);
+
+  if (subscriptionLoading) {
+    return (
+      <SafeAreaView style={styles.loaderContainer}>
+        <ActivityIndicator color={colors.primaryColor} size="large" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -864,6 +932,28 @@ const HomeScreen = () => {
           </View>
         </Animated.View>
 
+        {/* Inline subscription notice */}
+        {!hasChatAccess && !subscriptionLoading && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.subscriptionBanner}
+            onPress={openSubscriptionScreen}>
+            <View style={styles.subscriptionBannerIcon}>
+              <Text style={styles.subscriptionBannerIconText}>🔒</Text>
+            </View>
+            <View style={styles.subscriptionBannerTextWrap}>
+              <Text style={styles.subscriptionBannerTitle}>
+                Messaging locked
+              </Text>
+              <Text style={styles.subscriptionBannerSubtitle}>
+                Explore the app freely. Subscribe when you are ready to start
+                chatting again.
+              </Text>
+            </View>
+            <Text style={styles.subscriptionBannerCta}>View plans</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Content Section */}
         <View style={styles.contentSection}>
           <Animated.View
@@ -909,7 +999,9 @@ const HomeScreen = () => {
                 </View>
                 <Text style={styles.emptyTitle}>No conversations yet</Text>
                 <Text style={styles.emptySubtitle}>
-                  Start a new group chat to begin messaging
+                  {hasChatAccess
+                    ? 'Start a new group chat to begin messaging'
+                    : 'Messaging actions are disabled until you subscribe.'}
                 </Text>
               </Animated.View>
             }
@@ -929,10 +1021,12 @@ const HomeScreen = () => {
             },
           ]}>
           <TouchableOpacity
-            style={styles.floatButton}
-            onPress={() =>
-              navigation.navigate(ScreenConstants?.CREATE_GROUP_CHAT)
-            }
+            style={[
+              styles.floatButton,
+              !hasChatAccess && styles.floatButtonDisabled,
+            ]}
+            onPress={handleCreateGroupPress}
+            disabled={!hasChatAccess}
             activeOpacity={0.8}>
             <Text style={styles.floatButtonText}>+</Text>
           </TouchableOpacity>
@@ -1011,7 +1105,9 @@ const HomeScreen = () => {
                   activeOpacity={0.7}>
                   <Text style={styles.optionIcon}>⚠️</Text>
                   <Text style={[styles.optionText, styles.deleteOptionText]}>
-                    {selectedChat && isDirectChat(selectedChat) ? 'Delete Chat' : 'Delete Group'}
+                    {selectedChat && isDirectChat(selectedChat)
+                      ? 'Delete Chat'
+                      : 'Delete Group'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -1049,7 +1145,9 @@ const HomeScreen = () => {
                 ]}>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>
-                    {selectedChat && isDirectChat(selectedChat) ? 'Delete Chat?' : 'Delete Group?'}
+                    {selectedChat && isDirectChat(selectedChat)
+                      ? 'Delete Chat?'
+                      : 'Delete Group?'}
                   </Text>
                   <TouchableOpacity
                     onPress={hideDeleteConfirmationModal}
@@ -1090,6 +1188,16 @@ const HomeScreen = () => {
 export default HomeScreen;
 
 const styles = StyleSheet.create({
+  blockedContainer: {
+    flex: 1,
+    backgroundColor: colors.screenBackColor,
+  },
+  loaderContainer: {
+    flex: 1,
+    backgroundColor: colors.screenBackColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#0f172a',
@@ -1214,6 +1322,50 @@ const styles = StyleSheet.create({
   },
   profileButtonIcon: {
     fontSize: 22,
+  },
+
+  subscriptionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: -20,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: 'rgba(15,23,42,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(94,234,212,0.25)',
+  },
+  subscriptionBannerIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(94,234,212,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  subscriptionBannerIconText: {
+    fontSize: 20,
+  },
+  subscriptionBannerTextWrap: {
+    flex: 1,
+  },
+  subscriptionBannerTitle: {
+    color: '#f8fafc',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  subscriptionBannerSubtitle: {
+    color: '#94a3b8',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  subscriptionBannerCta: {
+    color: '#5eead4',
+    fontWeight: '700',
+    marginLeft: 14,
   },
 
   // Content Section
@@ -1444,6 +1596,9 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  floatButtonDisabled: {
+    opacity: 0.4,
   },
 
   // Modals

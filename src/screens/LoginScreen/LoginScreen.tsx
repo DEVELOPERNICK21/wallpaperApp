@@ -37,6 +37,7 @@ import {storeUserDetails} from '../../reduxrf/actions/user.ts';
 import messaging from '@react-native-firebase/messaging';
 import firestore from '@react-native-firebase/firestore';
 import SubscriptionService from '../../services/SubscriptionService';
+import {ERROR_MESSAGES, FIREBASE_ERROR_CODES} from '../../config/constants.ts';
 
 const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
@@ -88,7 +89,7 @@ const LoginScreen: React.FC = () => {
 
         // Store the token in Firestore under the user's document
         await firestore()
-          .collection('users')
+          .collection('Users')
           .doc(userId)
           .set({fcmToken: token}, {merge: true}); // Merge ensures existing data isn't overwritten
 
@@ -102,11 +103,19 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleLogin = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      ShowErrorMessage('Please enter both email and password.');
+      return;
+    }
+
     try {
       setLoading(true);
       const userCredential = await auth.signInWithEmailAndPassword(
-        email,
-        password,
+        trimmedEmail,
+        trimmedPassword,
       );
       const user = userCredential.user;
 
@@ -114,24 +123,21 @@ const LoginScreen: React.FC = () => {
       dispatch(storeUserDetails(user));
 
       // Check subscription status
-      const subscriptionStatus = await SubscriptionService.checkSubscriptionStatus(user.uid);
+      const subscriptionStatus =
+        await SubscriptionService.checkSubscriptionStatus(user.uid);
 
       // Update FCM token in Firestore
       await updateFCMToken(user.uid);
 
-      // If no active subscription, navigate to subscription screen
-      if (!subscriptionStatus.isActive) {
-        navigation.reset({
-          index: 0,
-          routes: [{name: ScreenConstants.SUBSCRIPTION_SCREEN}],
-        });
-        return;
-      }
-
-      // Navigate to the next screen (adjust as needed)
-      navigation.navigate(ScreenConstants.HOME_SCREEN);
-    } catch (error) {
-      ShowErrorMessage(error.message);
+      // Navigate into the app. Individual features will gate access based on subscription.
+      navigation.navigate(ScreenConstants.HOME_SCREEN, {
+        subscriptionActive: subscriptionStatus?.isActive ?? false,
+      });
+    } catch (error: any) {
+      const friendlyMessage =
+        (FIREBASE_ERROR_CODES as Record<string, string>)[error?.code] ||
+        ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS;
+      ShowErrorMessage(friendlyMessage);
     } finally {
       setLoading(false);
     }

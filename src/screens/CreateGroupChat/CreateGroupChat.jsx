@@ -14,6 +14,7 @@ import {
   SafeAreaView,
   Image,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -21,6 +22,8 @@ import {useNavigation} from '@react-navigation/native';
 import {colors} from '../../assets/color';
 import fonts from '../../assets/fonts';
 import {width, height} from '../../assets/string';
+import {useSubscription} from '../../hooks/useSubscription';
+import SubscriptionRequiredView from '../../component/SubscriptionRequiredView';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -33,6 +36,14 @@ const CreateGroupChat = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation();
   const currentUser = auth().currentUser;
+  const {
+    subscriptionStatus,
+    loading: subscriptionLoading,
+    isActive,
+    refresh: refreshSubscription,
+  } = useSubscription();
+  const hasChatAccess =
+    isActive && subscriptionStatus?.subscriptionType !== 'free';
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -42,6 +53,11 @@ const CreateGroupChat = () => {
   const selectedCountAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!hasChatAccess) {
+      setUsers([]);
+      return;
+    }
+
     const fetchUsers = async () => {
       try {
         setLoading(true);
@@ -78,7 +94,7 @@ const CreateGroupChat = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [hasChatAccess]);
 
   // Animate selected count
   useEffect(() => {
@@ -233,6 +249,27 @@ const CreateGroupChat = () => {
       </Animated.View>
     );
   };
+
+  if (subscriptionLoading) {
+    return (
+      <SafeAreaView style={styles.loaderContainer}>
+        <ActivityIndicator color={colors.primaryColor} size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasChatAccess) {
+    return (
+      <SafeAreaView style={styles.blockedContainer}>
+        <SubscriptionRequiredView
+          featureName="create private groups"
+          subscriptionStatus={subscriptionStatus}
+          loading={subscriptionLoading}
+          onRefresh={refreshSubscription}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -431,6 +468,16 @@ const CreateGroupChat = () => {
 };
 
 const styles = StyleSheet.create({
+  blockedContainer: {
+    flex: 1,
+    backgroundColor: colors.screenBackColor,
+  },
+  loaderContainer: {
+    flex: 1,
+    backgroundColor: colors.screenBackColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#0f172a',

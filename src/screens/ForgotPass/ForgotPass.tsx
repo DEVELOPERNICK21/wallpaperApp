@@ -1,12 +1,12 @@
-import React, {useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   StyleSheet,
   View,
   Platform,
   ScrollView,
   Text,
-  Alert,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 
 import {height, width} from '../../assets/string.tsx';
@@ -17,19 +17,30 @@ import {KeyboardAvoidingView} from 'react-native';
 import Spinner from '../../component/Spinner/Spinner.js';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../redux/reducers';
-import {EnterLogin_Icon, UserPass_Icon} from '../../assets/icons/index.jsx';
-import CommonThinInput from '../../component/Input/CommonThinInput.tsx';
-import CustomMainTextInput from '../../component/CustomMainTextInput.tsx';
+import {UserPass_Icon} from '../../assets/icons/index.jsx';
 import CustomTextInput from '../../component/CustomTextInput.tsx';
 import CustomButton from '../../component/CustomButton.tsx';
 import {useNavigation} from '@react-navigation/native';
 import ScreenConstants from '../../Routes/ScreenConstants.tsx';
 import auth from '@react-native-firebase/auth';
+import {
+  PASSWORD_RESET_CONFIG,
+  FIREBASE_ERROR_CODES,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+} from '../../config/constants';
+import {
+  ShowErrorMessage,
+  ShowInfoMessage,
+  ShowSuccessMessage,
+} from '../../component/FlashMessage/FlashMessage';
 
 const ForgotPass: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
   const [emailSent, setEmailSent] = useState<boolean>(false);
+  const [cooldown, setCooldown] = useState<number>(0);
+  const [lastRequestedEmail, setLastRequestedEmail] = useState<string>('');
   const theme = useSelector((state: RootState) => state.theme);
   const navigation = useNavigation();
 
@@ -38,50 +49,143 @@ const ForgotPass: React.FC = () => {
     return emailRegex.test(email);
   };
 
-  const handleSendResetEmail = async () => {
-    if (!email || !email.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
+  const startCooldown = useCallback(() => {
+    setCooldown(PASSWORD_RESET_CONFIG.COOLDOWN_SECONDS || 60);
+  }, []);
+
+  useEffect(() => {
+    if (!cooldown) {
       return;
     }
 
-    if (!validateEmail(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
+    const interval = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldown]);
+
+  const buildActionCodeSettings = useCallback((targetEmail: string) => {
+    if (!PASSWORD_RESET_CONFIG.CONTINUE_URL) {
+      return undefined;
     }
 
-    try {
-      setLoading(true);
-      await auth().sendPasswordResetEmail(email.trim());
-      setLoading(false);
-      setEmailSent(true);
-      Alert.alert(
-        'Success',
-        'Password reset email sent! Please check your inbox.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.goBack();
-            },
-          },
-        ],
-      );
-    } catch (error: any) {
-      setLoading(false);
-      console.error('Password reset error:', error);
-      let errorMessage = 'Failed to send reset email. Please try again.';
+    const continueUrl = PASSWORD_RESET_CONFIG.CONTINUE_URL.includes('?')
+      ? `${PASSWORD_RESET_CONFIG.CONTINUE_URL}&email=${encodeURIComponent(
+          targetEmail,
+        )}`
+      : `${PASSWORD_RESET_CONFIG.CONTINUE_URL}?email=${encodeURIComponent(
+          targetEmail,
+        )}`;
 
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email address.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address format.';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many requests. Please try again later.';
+    return {
+      url: continueUrl,
+      handleCodeInApp: PASSWORD_RESET_CONFIG.HANDLE_CODE_IN_APP,
+      android: {
+        packageName: PASSWORD_RESET_CONFIG.ANDROID_PACKAGE_NAME,
+        installApp: true,
+        minimumVersion: '1',
+      },
+      iOS: {
+        bundleId: PASSWORD_RESET_CONFIG.IOS_BUNDLE_ID,
+      },
+    };
+  }, []);
+
+  const getFirebaseErrorMessage = useCallback((code?: string) => {
+    if (!code) {
+      return ERROR_MESSAGES.GENERAL.UNKNOWN_ERROR;
+    }
+    return (
+      (FIREBASE_ERROR_CODES as Record<string, string>)[code] ||
+      ERROR_MESSAGES.GENERAL.UNKNOWN_ERROR
+    );
+  }, []);
+
+  const sendResetLink = useCallback(
+    async (targetEmail: string) => {
+      try {
+        setLoading(true);
+        const normalizedEmail = targetEmail.trim().toLowerCase();
+        const actionCodeSettings = buildActionCodeSettings(normalizedEmail);
+        if (actionCodeSettings) {
+          await auth().sendPasswordResetEmail(
+            normalizedEmail,
+            actionCodeSettings,
+          );
+        } else {
+          await auth().sendPasswordResetEmail(normalizedEmail);
+        }
+        setLoading(false);
+        setEmailSent(true);
+        setLastRequestedEmail(normalizedEmail);
+        startCooldown();
+        ShowSuccessMessage(SUCCESS_MESSAGES.AUTH.PASSWORD_RESET);
+      } catch (error: any) {
+        console.error('Password reset error:', error);
+        setLoading(false);
+        const errorMessage = getFirebaseErrorMessage(error?.code);
+        ShowErrorMessage(errorMessage);
       }
+    },
+    [buildActionCodeSettings, getFirebaseErrorMessage, startCooldown],
+  );
 
-      Alert.alert('Error', errorMessage);
+  const handleSendResetEmail = useCallback(async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      ShowErrorMessage('Please enter your email address.');
+      return;
     }
-  };
+
+    if (!validateEmail(trimmedEmail)) {
+      ShowErrorMessage(ERROR_MESSAGES.AUTH.INVALID_EMAIL);
+      return;
+    }
+
+    await sendResetLink(trimmedEmail);
+  }, [email, sendResetLink]);
+
+  const handleResendLink = useCallback(async () => {
+    if (cooldown > 0 || loading) {
+      return;
+    }
+
+    const targetEmail = (lastRequestedEmail || email).trim().toLowerCase();
+    if (!targetEmail) {
+      ShowErrorMessage('Enter your email above before requesting a link.');
+      return;
+    }
+
+    if (!validateEmail(targetEmail)) {
+      ShowErrorMessage(ERROR_MESSAGES.AUTH.INVALID_EMAIL);
+      return;
+    }
+
+    await sendResetLink(targetEmail);
+  }, [cooldown, email, lastRequestedEmail, loading, sendResetLink]);
+
+  const handleOpenMailbox = useCallback(async () => {
+    try {
+      const mailUrl = 'mailto:';
+      const canOpen = await Linking.canOpenURL(mailUrl);
+      if (canOpen) {
+        await Linking.openURL(mailUrl);
+      } else {
+        ShowInfoMessage('Open your preferred email app to find the reset link.');
+      }
+    } catch {
+      ShowInfoMessage('Open your preferred email app to find the reset link.');
+    }
+  }, []);
+
+  const canResend = cooldown === 0 && !loading;
 
   let userId = {
     title: 'Email',
@@ -117,8 +221,33 @@ const ForgotPass: React.FC = () => {
           {emailSent && (
             <View style={styles.successContainer}>
               <Text style={styles.successText}>
-                ✓ Check your email for reset instructions
+                ✓ We sent a reset link to{' '}
+                <Text style={styles.successEmail}>
+                  {lastRequestedEmail || email}
+                </Text>
               </Text>
+              <View style={styles.successActions}>
+                <TouchableOpacity
+                  style={styles.outlineButton}
+                  onPress={handleOpenMailbox}
+                  activeOpacity={0.8}>
+                  <Text style={styles.outlineButtonText}>Open mail app</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.resendButton,
+                    (!canResend || loading) && styles.resendButtonDisabled,
+                  ]}
+                  disabled={!canResend}
+                  onPress={handleResendLink}
+                  activeOpacity={0.8}>
+                  <Text style={styles.resendButtonText}>
+                    {canResend
+                      ? 'Resend link'
+                      : `Resend in ${cooldown}s`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -135,7 +264,9 @@ const ForgotPass: React.FC = () => {
 
           <View style={styles.infoContainer}>
             <Text style={styles.infoText}>
-              💡 Didn't receive the email? Check your spam folder or try again.
+              💡 Didn't receive the email? Check spam/junk folders, add
+              notifications@firebaseapp.com to your safe senders list, or tap
+              "Resend link" above once the timer ends.
             </Text>
           </View>
         </ScrollView>
@@ -221,6 +352,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.PoppinsMedium,
     textAlign: 'center',
+  },
+  successEmail: {
+    fontWeight: '700',
+  },
+  successActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 12,
+  },
+  outlineButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#10b981',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  outlineButtonText: {
+    color: '#047857',
+    fontSize: 13,
+    fontFamily: fonts.PoppinsMedium,
+  },
+  resendButton: {
+    flex: 1,
+    backgroundColor: '#059669',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  resendButtonDisabled: {
+    opacity: 0.5,
+  },
+  resendButtonText: {
+    color: '#d1fae5',
+    fontSize: 13,
+    fontFamily: fonts.PoppinsMedium,
   },
   backToLoginButton: {
     alignItems: 'center',

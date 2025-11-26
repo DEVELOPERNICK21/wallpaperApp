@@ -55,6 +55,9 @@ target 'wallpe' do
         config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'NO'
         config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
         config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+        
+        # Allow non-modular header usage to unblock ReactCodegen builds
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
       end
     end
   end

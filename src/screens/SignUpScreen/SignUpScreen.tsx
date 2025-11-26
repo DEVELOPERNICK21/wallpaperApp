@@ -36,7 +36,10 @@ import {
 
 import {storeUserDetails} from '../../reduxrf/actions/user.ts';
 import {showMessage} from 'react-native-flash-message';
-import {ShowSuccessMessage} from '../../component/FlashMessage/FlashMessage.tsx';
+import {
+  ShowErrorMessage,
+  ShowSuccessMessage,
+} from '../../component/FlashMessage/FlashMessage.tsx';
 import {setLogOut} from '../../redux/actions/users.js';
 import {removeUserData} from '../../utils/asynstorage.js';
 
@@ -58,7 +61,9 @@ const SignUpScreen: React.FC = () => {
   const handleSignup = async () => {
     console.log('start');
     if (!name || !email || !password) {
-      return {success: false, error: 'Please enter all details'};
+      const errorMsg = 'Please enter name, email, and password.';
+      ShowErrorMessage(errorMsg);
+      return {success: false, error: errorMsg};
     }
 
     try {
@@ -79,26 +84,13 @@ const SignUpScreen: React.FC = () => {
       const userDoc = doc(usersCollection, user.uid);
       await setDoc(userDoc, {name, email});
 
-      // ✅ Sign out user after successful registration
-      await auth().signOut();
-      try {
-        dispatch(setLogOut());
-        await removeUserData();
-        navigation.reset({
-          index: 0,
-          routes: [{name: ScreenConstants.LOGIN_SCREEN}],
-        });
-      } catch (error) {
-        console.error('Error signing out: ', error);
-      }
-
       setLoading(false); // Hide spinner
-      ShowSuccessMessage('Account created! Please log in.');
+      ShowSuccessMessage('Account created! Welcome aboard.');
 
-      // ✅ Reset navigation stack to LOGIN_SCREEN
+      // Keep user logged in and take them straight to Home
       navigation.reset({
         index: 0,
-        routes: [{name: ScreenConstants.LOGIN_SCREEN}],
+        routes: [{name: ScreenConstants.HOME_SCREEN}],
       });
 
       return {success: true};
@@ -108,13 +100,16 @@ const SignUpScreen: React.FC = () => {
 
       let errorMessage = 'Something went wrong. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'That email address is already in use!';
+        errorMessage =
+          'This email is already registered. Try logging in or use another email.';
       } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'That email address is invalid!';
+        errorMessage = 'That email address looks invalid.';
       } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'The password is too weak.';
+        errorMessage =
+          'Password is too weak. Use at least 6 characters with letters and numbers.';
       }
 
+      ShowErrorMessage(errorMessage);
       return {success: false, error: errorMessage};
     }
   };

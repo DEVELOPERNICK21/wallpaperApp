@@ -6,13 +6,24 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
+import {useSubscription} from '../../hooks/useSubscription';
+import SubscriptionRequiredView from '../../component/SubscriptionRequiredView';
 
 const ChatScreen = ({route}) => {
   const {chatId} = route.params;
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
+  const {
+    subscriptionStatus,
+    loading: subscriptionLoading,
+    isActive,
+    refresh: refreshSubscription,
+  } = useSubscription();
+  const hasChatAccess =
+    isActive && subscriptionStatus?.subscriptionType !== 'free';
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -39,6 +50,27 @@ const ChatScreen = ({route}) => {
     setMessageText('');
   };
 
+  if (subscriptionLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!hasChatAccess) {
+    return (
+      <View style={styles.blockedContainer}>
+        <SubscriptionRequiredView
+          featureName="chat inside rooms"
+          subscriptionStatus={subscriptionStatus}
+          loading={subscriptionLoading}
+          onRefresh={refreshSubscription}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -62,6 +94,16 @@ const ChatScreen = ({route}) => {
 };
 
 const styles = StyleSheet.create({
+  blockedContainer: {
+    flex: 1,
+    backgroundColor: '#040615',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#040615',
+  },
   container: {flex: 1},
   message: {
     padding: 10,

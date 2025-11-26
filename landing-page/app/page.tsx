@@ -163,21 +163,38 @@ const pricingPlans = [
   },
 ];
 
-export default async function Home() {
+type PageProps = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+export default async function Home({searchParams}: PageProps) {
   const baseline =
     Number.parseInt(process.env.NEXT_PUBLIC_USER_COUNT_BASELINE ?? '', 10) || 0;
   const userCount = await fetchUserCount({baseline});
   const usageStats = await fetchUsageStats();
-  
+  const registrationParam = searchParams?.registered;
+  const registrationToken = Array.isArray(registrationParam)
+    ? registrationParam[0]
+    : registrationParam;
+  const hasUnlockedPricing = registrationToken
+    ? ['true', '1', 'yes', 'registered'].includes(
+        registrationToken.toLowerCase(),
+      )
+    : false;
+
   // IPA download URL - construct absolute URL for QR code
   // QR codes need absolute URLs to work when scanned from a phone
   let ipaDownloadUrl = process.env.NEXT_PUBLIC_IPA_DOWNLOAD_URL;
-  
+
   if (!ipaDownloadUrl) {
     // Construct absolute URL from headers or Vercel env
     const headersList = await headers();
-    const host = headersList.get('host') || process.env.VERCEL_URL || 'localhost:3000';
-    const protocol = process.env.NODE_ENV === 'production' || process.env.VERCEL_URL ? 'https' : 'http';
+    const host =
+      headersList.get('host') || process.env.VERCEL_URL || 'localhost:3000';
+    const protocol =
+      process.env.NODE_ENV === 'production' || process.env.VERCEL_URL
+        ? 'https'
+        : 'http';
     // Ensure host doesn't already include protocol
     const cleanHost = host.replace(/^https?:\/\//, '');
     ipaDownloadUrl = `${protocol}://${cleanHost}/wallpe.ipa`;
@@ -311,7 +328,7 @@ export default async function Home() {
               Subscribe to unlock all features of Wallpaper Chat
             </p>
           </div>
-          
+
           {/* Limited Time Offer Banner */}
           <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent p-6 text-center">
             <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
@@ -324,127 +341,169 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            {pricingPlans.map(plan => (
-              <article
-                key={plan.name}
-                className={`relative flex flex-col rounded-2xl border p-8 text-left transition-all ${
-                  plan.isPrimary
-                    ? 'border-purple-500/60 bg-gradient-to-br from-purple-900/40 via-purple-800/30 to-slate-900/70 shadow-[0_20px_60px_-30px_rgba(147,51,234,0.6)] scale-105 z-10'
-                    : 'border-slate-700/70 bg-slate-900/70 hover:border-slate-600 hover:scale-102'
-                }`}>
-                {/* Badge */}
-                {(plan.isPrimary || plan.popular) && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="rounded-full bg-purple-500 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg">
-                      Recommended
-                    </span>
-                  </div>
-                )}
-
-                {/* Savings Badge */}
-                {plan.savings && (
-                  <div className="absolute -top-3 -right-3">
-                    <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
-                      {plan.savings}
-                    </span>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <h3 className="text-2xl font-bold text-white">
-                    {plan.name}
-                  </h3>
-                  
-                  {/* Pricing */}
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      {plan.originalPrice ? (
-                        <span className="text-lg text-slate-500 line-through">
-                          {plan.originalPrice}
-                        </span>
-                      ) : null}
-                      <span className="text-4xl font-bold text-white">
-                        {plan.price}
+          {hasUnlockedPricing ? (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {pricingPlans.map(plan => (
+                <article
+                  key={plan.name}
+                  className={`relative flex flex-col rounded-2xl border p-8 text-left transition-all ${
+                    plan.isPrimary
+                      ? 'border-purple-500/60 bg-gradient-to-br from-purple-900/40 via-purple-800/30 to-slate-900/70 shadow-[0_20px_60px_-30px_rgba(147,51,234,0.6)] scale-105 z-10'
+                      : 'border-slate-700/70 bg-slate-900/70 hover:border-slate-600 hover:scale-102'
+                  }`}>
+                  {/* Badge */}
+                  {(plan.isPrimary || plan.popular) && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <span className="rounded-full bg-purple-500 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg">
+                        Recommended
                       </span>
-                      {plan.cadence ? (
-                        <span className="text-base text-slate-400">/{plan.cadence.replace('per ', '')}</span>
-                      ) : null}
                     </div>
-                    {plan.priceSubtext && (
-                      <p className="text-xs text-emerald-400 font-medium">
-                        {plan.priceSubtext}
+                  )}
+
+                  {/* Savings Badge */}
+                  {plan.savings && (
+                    <div className="absolute -top-3 -right-3">
+                      <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                        {plan.savings}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <h3 className="text-2xl font-bold text-white">
+                      {plan.name}
+                    </h3>
+
+                    {/* Pricing */}
+                    <div className="space-y-1">
+                      <div className="flex items-baseline gap-2">
+                        {plan.originalPrice ? (
+                          <span className="text-lg text-slate-500 line-through">
+                            {plan.originalPrice}
+                          </span>
+                        ) : null}
+                        <span className="text-4xl font-bold text-white">
+                          {plan.price}
+                        </span>
+                        {plan.cadence ? (
+                          <span className="text-base text-slate-400">
+                            /{plan.cadence.replace('per ', '')}
+                          </span>
+                        ) : null}
+                      </div>
+                      {plan.priceSubtext && (
+                        <p className="text-xs text-emerald-400 font-medium">
+                          {plan.priceSubtext}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Value Proposition */}
+                    {plan.value && (
+                      <p className="text-sm text-slate-400 italic">
+                        {plan.value}
                       </p>
                     )}
                   </div>
 
-                  {/* Value Proposition */}
-                  {plan.value && (
-                    <p className="text-sm text-slate-400 italic">
-                      {plan.value}
-                    </p>
+                  {/* Features */}
+                  <ul className="mt-6 space-y-3 text-sm text-slate-300">
+                    {plan.features.map(feature => (
+                      <li key={feature} className="flex items-start gap-3">
+                        <svg
+                          className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Limitations (for Free tier) */}
+                  {plan.limitations && plan.limitations.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-slate-700/50 bg-slate-950/50 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Limitations
+                      </p>
+                      <ul className="space-y-1.5 text-xs text-slate-400">
+                        {plan.limitations.map(limitation => (
+                          <li
+                            key={limitation}
+                            className="flex items-start gap-2">
+                            <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-600" />
+                            <span>{limitation}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
-                </div>
 
-                {/* Features */}
-                <ul className="mt-6 space-y-3 text-sm text-slate-300">
-                  {plan.features.map(feature => (
-                    <li key={feature} className="flex items-start gap-3">
-                      <svg
-                        className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Limitations (for Free tier) */}
-                {plan.limitations && plan.limitations.length > 0 && (
-                  <div className="mt-4 rounded-lg border border-slate-700/50 bg-slate-950/50 p-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Limitations
-                    </p>
-                    <ul className="space-y-1.5 text-xs text-slate-400">
-                      {plan.limitations.map(limitation => (
-                        <li key={limitation} className="flex items-start gap-2">
-                          <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-600" />
-                          <span>{limitation}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  {/* CTA Button */}
+                  <div className="mt-8">
+                    <Link
+                      href={plan.ctaHref}
+                      className={`block w-full rounded-lg px-6 py-3 text-center text-base font-semibold transition-all focus:outline-none focus-visible:ring-2 ${
+                        plan.isPrimary
+                          ? 'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/50 focus-visible:ring-purple-400'
+                          : 'border border-slate-600 bg-slate-800/50 text-slate-200 hover:border-slate-500 hover:bg-slate-800 focus-visible:ring-slate-600'
+                      }`}>
+                      {plan.ctaLabel || 'Subscribe'}
+                    </Link>
                   </div>
-                )}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-slate-800/70 bg-slate-900/40 p-8 text-center shadow-[0_20px_60px_-40px_rgba(56,189,248,0.45)]">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
+                Registration required
+              </p>
+              <h3 className="text-2xl font-bold text-white">
+                Create your secure account to unlock renewal plans
+              </h3>
+              <p className="mt-3 text-base text-slate-300">
+                We only share pricing after we verify each requester. Complete
+                the short registration form and we will immediately enable
+                purchase options for your account.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center justify-center rounded-full bg-sky-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-200">
+                  Register & Verify
+                </Link>
+                <Link
+                  href="#contact"
+                  className="inline-flex items-center justify-center rounded-full border border-slate-600 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-600">
+                  Talk to our team
+                </Link>
+              </div>
+              <p className="mt-4 text-xs text-slate-500">
+                Already registered? Follow the verification link we emailed or
+                revisit this page with{' '}
+                <code className="rounded bg-slate-800 px-2 py-0.5">
+                  ?registered=true
+                </code>{' '}
+                to review renewal plans.
+              </p>
+            </div>
+          )}
 
-                {/* CTA Button */}
-                <div className="mt-8">
-                  <Link
-                    href={plan.ctaHref}
-                    className={`block w-full rounded-lg px-6 py-3 text-center text-base font-semibold transition-all focus:outline-none focus-visible:ring-2 ${
-                      plan.isPrimary
-                        ? 'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/50 focus-visible:ring-purple-400'
-                        : 'border border-slate-600 bg-slate-800/50 text-slate-200 hover:border-slate-500 hover:bg-slate-800 focus-visible:ring-slate-600'
-                    }`}>
-                    {plan.ctaLabel || 'Subscribe'}
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-          
           {/* Trust & Guarantee Section */}
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-slate-800/70 bg-slate-900/50 p-4 text-center">
               <div className="mb-2 text-2xl">🔒</div>
-              <p className="text-sm font-semibold text-white">7-Day Money Back</p>
+              <p className="text-sm font-semibold text-white">
+                7-Day Money Back
+              </p>
               <p className="mt-1 text-xs text-slate-400">
                 Not satisfied? Get full refund, no questions asked
               </p>
@@ -458,7 +517,9 @@ export default async function Home() {
             </div>
             <div className="rounded-xl border border-slate-800/70 bg-slate-900/50 p-4 text-center">
               <div className="mb-2 text-2xl">🛡️</div>
-              <p className="text-sm font-semibold text-white">Secure & Private</p>
+              <p className="text-sm font-semibold text-white">
+                Secure & Private
+              </p>
               <p className="mt-1 text-xs text-slate-400">
                 End-to-end encryption, your data stays yours
               </p>
@@ -467,7 +528,8 @@ export default async function Home() {
 
           <div className="mt-8 text-center">
             <p className="text-sm text-slate-400">
-              All plans include encrypted messaging, privacy controls, and regular updates.
+              All plans include encrypted messaging, privacy controls, and
+              regular updates.
             </p>
             <p className="mt-2 text-sm text-slate-400">
               Need help choosing?{' '}
@@ -478,7 +540,8 @@ export default async function Home() {
               </Link>
             </p>
             <p className="mt-4 text-xs text-slate-500">
-              *Prices shown are in Indian Rupees (INR). Launch pricing valid for limited time.
+              *Prices shown are in Indian Rupees (INR). Launch pricing valid for
+              limited time.
             </p>
           </div>
         </section>
@@ -612,7 +675,7 @@ export default async function Home() {
             Next.js marketing site into your existing stack. Need help? We have
             detailed docs plus ready-to-run Firebase infrastructure.
           </p>
-          
+
           {/* Download Options */}
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
             {/* Android APK Download */}
@@ -625,17 +688,17 @@ export default async function Home() {
                   Get the latest APK file for Android devices
                 </p>
               </div>
-              
+
               {/* Android Icon Visual Element */}
-            <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-emerald-600/5 p-8 border border-emerald-500/30 shadow-lg">
-              <img
-                src="/android-logo-svgrepo-com.svg"
-                alt="Android download icon"
-                loading="lazy"
-                className="h-28 w-28 drop-shadow-md"
-              />
+              <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-emerald-600/5 p-8 border border-emerald-500/30 shadow-lg">
+                <img
+                  src="/android-logo-svgrepo-com.svg"
+                  alt="Android download icon"
+                  loading="lazy"
+                  className="h-28 w-28 drop-shadow-md"
+                />
               </div>
-              
+
               <Link
                 href="/wallpaper-chat.apk"
                 download="wallpaper-chat.apk"
@@ -687,7 +750,9 @@ export default async function Home() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3 mb-8">
             {/* Brand Section */}
             <div>
-              <p className="text-base font-semibold text-white mb-2">Wallpaper Chat</p>
+              <p className="text-base font-semibold text-white mb-2">
+                Wallpaper Chat
+              </p>
               <p className="text-xs uppercase tracking-[0.3em] text-slate-500 mb-4">
                 Discreet. Secure. Ready to deploy.
               </p>

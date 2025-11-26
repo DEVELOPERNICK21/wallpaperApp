@@ -14,7 +14,6 @@ import {
   SuccessfullyReset,
   VerifyOtp,
 } from '../screens';
-import SubscriptionScreen from '../screens/SubscriptionScreen/SubscriptionScreen';
 import {colors} from '../assets/color';
 import MyStatusBar from '../component/StatusBar';
 
@@ -85,10 +84,6 @@ const AuthNavigation = () => {
         <Stack.Screen
           name={ScreenConstants?.SUCCESSFULLY_RESET_SCREEN}
           component={SuccessfullyReset}
-        />
-        <Stack.Screen
-          name={ScreenConstants?.SUBSCRIPTION_SCREEN}
-          component={SubscriptionScreen}
         />
       </Stack.Navigator>
     </>

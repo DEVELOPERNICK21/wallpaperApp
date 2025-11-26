@@ -7,6 +7,7 @@ import {
   TextInput,
   Button,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -15,6 +16,8 @@ import {height, width} from '../../assets/string';
 import {colors} from '../../assets/color';
 import fonts from '../../assets/fonts';
 import {BlackMenu_Icon} from '../../assets/icons';
+import {useSubscription} from '../../hooks/useSubscription';
+import SubscriptionRequiredView from '../../component/SubscriptionRequiredView';
 
 const ChatRoomScreen = ({route}) => {
   const {roomId} = route.params;
@@ -24,8 +27,20 @@ const ChatRoomScreen = ({route}) => {
   const [roomDetails, setRoomDetails] = useState({});
   const currentUser = auth().currentUser;
   const navigation = useNavigation();
+  const {
+    subscriptionStatus,
+    loading: subscriptionLoading,
+    isActive,
+    refresh: refreshSubscription,
+  } = useSubscription();
+  const hasChatAccess =
+    isActive && subscriptionStatus?.subscriptionType !== 'free';
 
   useEffect(() => {
+    if (!hasChatAccess) {
+      return;
+    }
+
     const fetchMessages = firestore()
       .collection('chatRooms')
       .doc(roomId)
@@ -66,7 +81,7 @@ const ChatRoomScreen = ({route}) => {
       fetchMessages(); // Unsubscribe from messages
       fetchRoomDetails(); // Unsubscribe from room details
     };
-  }, [roomId]);
+  }, [roomId, hasChatAccess]);
 
   const sendMessage = async () => {
     if (message.trim()) {
@@ -103,6 +118,27 @@ const ChatRoomScreen = ({route}) => {
     );
   };
 
+  if (subscriptionLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator color={colors.primaryColor} size="large" />
+      </View>
+    );
+  }
+
+  if (!hasChatAccess) {
+    return (
+      <View style={styles.blockedContainer}>
+        <SubscriptionRequiredView
+          featureName="chat in community rooms"
+          subscriptionStatus={subscriptionStatus}
+          loading={subscriptionLoading}
+          onRefresh={refreshSubscription}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -138,6 +174,16 @@ const ChatRoomScreen = ({route}) => {
 };
 
 const styles = StyleSheet.create({
+  blockedContainer: {
+    flex: 1,
+    backgroundColor: '#040615',
+  },
+  loaderContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#040615',
+  },
   container: {
     flex: 1,
   },

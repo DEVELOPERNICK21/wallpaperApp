@@ -1,6 +1,6 @@
 import {useState, useEffect} from 'react';
 import {useSelector} from 'react-redux';
-import {RootState} from '../redux/reducers';
+import {RootState} from '../redux/types';
 import SubscriptionService, {SubscriptionStatus} from '../services/SubscriptionService';
 
 export const useSubscription = () => {

@@ -44,10 +44,23 @@ export const API_CONFIG = {
 export const LANDING_PAGE_CONFIG = {
   // Update this with your actual landing page URL
   BASE_URL:
-    __DEV__
-      ? 'http://localhost:3000'
-      : process.env.LANDING_PAGE_URL || 'https://your-domain.vercel.app',
+    process.env.LANDING_PAGE_URL ||
+    'https://wallpaper-app-gamma.vercel.app',
   SUBSCRIBE_PATH: '/subscribe',
+} as const;
+
+// ============ PASSWORD RESET CONFIGURATION ============
+
+export const PASSWORD_RESET_CONFIG = {
+  /**
+   * Optional continue URL (must be added to Firebase Auth authorized domains).
+   * Leave empty to fall back to Firebase's default password reset handler.
+   */
+  CONTINUE_URL: '',
+  HANDLE_CODE_IN_APP: false,
+  ANDROID_PACKAGE_NAME: 'com.wallpe',
+  IOS_BUNDLE_ID: 'com.wallpe',
+  COOLDOWN_SECONDS: 60,
 } as const;
 
 // ============ FIREBASE CONFIGURATION ============

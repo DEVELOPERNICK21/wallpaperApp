@@ -325,7 +325,7 @@ export const saveFCMTokenToFirestore = async () => {
       return;
     }
 
-    await firestore().collection('users').doc(currentUser.uid).set(
+    await firestore().collection('Users').doc(currentUser.uid).set(
       {
         fcmToken: fcmToken,
         fcmTokenUpdatedAt: firestore.FieldValue.serverTimestamp(),
