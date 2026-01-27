@@ -232,6 +232,13 @@ export default async function Home({searchParams}: PageProps) {
                 Request a Private Demo
               </Link>
             </div>
+            <div className="mt-4">
+              <Link
+                href="/wallpaper"
+                className="text-sm text-slate-400 hover:text-slate-200 transition">
+                Looking for wallpapers? Check out our wallpaper gallery →
+              </Link>
+            </div>
           </div>
           <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-[0_30px_80px_-40px_rgba(8,47,73,0.8)]">
             <p className="text-sm uppercase tracking-[0.35em] text-slate-500">

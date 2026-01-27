@@ -75,29 +75,52 @@ function PaymentPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
+  const [userPhone, setUserPhone] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
+  const [identifierType, setIdentifierType] = useState<'userId' | 'phone'>('userId');
 
   useEffect(() => {
     // Get user ID from URL params or localStorage
     const urlUserId = searchParams.get('userId');
     const storedUserId =
       typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+    const storedPhone =
+      typeof window !== 'undefined' ? localStorage.getItem('userPhone') : null;
     const storedEmail =
       typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    const storedIdentifierType =
+      typeof window !== 'undefined'
+        ? (localStorage.getItem('identifierType') as 'userId' | 'phone' | null)
+        : null;
 
     if (urlUserId) {
       setUserId(urlUserId);
+      setIdentifierType('userId');
       if (typeof window !== 'undefined') {
         localStorage.setItem('userId', urlUserId);
+        localStorage.setItem('identifierType', 'userId');
       }
     } else if (storedUserId) {
       setUserId(storedUserId);
+      setIdentifierType('userId');
+    } else if (storedPhone) {
+      setUserPhone(storedPhone);
+      setIdentifierType('phone');
+    }
+
+    if (storedIdentifierType) {
+      setIdentifierType(storedIdentifierType);
     }
 
     if (storedEmail) {
       setUserEmail(storedEmail);
     }
   }, [searchParams]);
+
+  // Normalize phone number (remove spaces, dashes, parentheses)
+  const normalizePhoneNumber = (phone: string): string => {
+    return phone.replace(/[\s\-()]/g, '').trim();
+  };
 
   const handlePayment = async () => {
     // Validate email
@@ -106,18 +129,45 @@ function PaymentPageContent() {
       return;
     }
 
-    const trimmedUserId = userId.trim();
-    if (!trimmedUserId) {
-      setError(
-        'Please enter your Wallpaper Chat User ID so we can apply the plan to the correct account.',
-      );
-      return;
+    // Validate identifier (either userId or phone)
+    let finalUserId: string | null = null;
+    let phoneNumber: string | null = null;
+
+    if (identifierType === 'userId') {
+      const trimmedUserId = userId.trim();
+      if (!trimmedUserId) {
+        setError(
+          'Please enter your Wallpaper Chat User ID so we can apply the plan to the correct account.',
+        );
+        return;
+      }
+      finalUserId = trimmedUserId;
+    } else {
+      const trimmedPhone = userPhone.trim();
+      if (!trimmedPhone) {
+        setError(
+          'Please enter your mobile number so we can apply the plan to the correct account.',
+        );
+        return;
+      }
+      // Basic phone validation (at least 10 digits)
+      const normalizedPhone = normalizePhoneNumber(trimmedPhone);
+      if (normalizedPhone.length < 10 || !/^\d+$/.test(normalizedPhone)) {
+        setError('Please enter a valid mobile number (at least 10 digits).');
+        return;
+      }
+      phoneNumber = normalizedPhone;
     }
 
-    const finalUserId = trimmedUserId;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('userId', finalUserId);
+      if (finalUserId) {
+        localStorage.setItem('userId', finalUserId);
+      }
+      if (phoneNumber) {
+        localStorage.setItem('userPhone', phoneNumber);
+      }
       localStorage.setItem('userEmail', userEmail);
+      localStorage.setItem('identifierType', identifierType);
     }
 
     setLoading(true);
@@ -134,7 +184,8 @@ function PaymentPageContent() {
           amount: plan.price,
           currency: 'INR',
           planType: planType,
-          userId: finalUserId,
+          userId: finalUserId || null,
+          userPhone: phoneNumber || null,
           userEmail: userEmail,
         }),
       });
@@ -162,8 +213,9 @@ function PaymentPageContent() {
 
       const {orderId, amount, currency} = data;
 
-      // Store finalUserId in a variable accessible to handler
+      // Store identifiers in variables accessible to handler
       const paymentUserId = finalUserId;
+      const paymentPhone = phoneNumber;
 
       // Check if Razorpay key is configured
       const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -199,7 +251,8 @@ function PaymentPageContent() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                userId: paymentUserId,
+                userId: paymentUserId || null,
+                userPhone: paymentPhone || null,
                 planType: planType,
               }),
             });
@@ -375,29 +428,96 @@ function PaymentPageContent() {
                 />
               </div>
 
-              <div className="mb-6">
+              {/* Identifier Type Selection */}
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Wallpaper Chat User ID <span className="text-red-400">*</span>
+                  Identify Your Account <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={userId}
-                  onChange={e => {
-                    setUserId(e.target.value);
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem('userId', e.target.value);
-                    }
-                  }}
-                  placeholder="e.g. uid_xxxxxxxx (Profile → Subscription section)"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  autoComplete="off"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Find this inside the mobile app under Profile → Subscription.
-                  We need it to activate the correct account. If you tapped a
-                  plan from the app, it will be pre-filled automatically.
-                </p>
+                <div className="flex gap-4 mb-3">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="identifierType"
+                      value="userId"
+                      checked={identifierType === 'userId'}
+                      onChange={e => {
+                        setIdentifierType('userId');
+                        setError(null);
+                      }}
+                      className="mr-2 accent-purple-500"
+                    />
+                    <span className="text-sm text-slate-300">User ID</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="identifierType"
+                      value="phone"
+                      checked={identifierType === 'phone'}
+                      onChange={e => {
+                        setIdentifierType('phone');
+                        setError(null);
+                      }}
+                      className="mr-2 accent-purple-500"
+                    />
+                    <span className="text-sm text-slate-300">Mobile Number</span>
+                  </label>
+                </div>
               </div>
+
+              {/* User ID Input */}
+              {identifierType === 'userId' && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Wallpaper Chat User ID <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={userId}
+                    onChange={e => {
+                      setUserId(e.target.value);
+                      setError(null);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('userId', e.target.value);
+                      }
+                    }}
+                    placeholder="e.g. uid_xxxxxxxx (Profile → Subscription section)"
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    autoComplete="off"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Find this inside the mobile app under Profile → Subscription.
+                    If you tapped a plan from the app, it will be pre-filled automatically.
+                  </p>
+                </div>
+              )}
+
+              {/* Phone Number Input */}
+              {identifierType === 'phone' && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Mobile Number <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={userPhone}
+                    onChange={e => {
+                      setUserPhone(e.target.value);
+                      setError(null);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('userPhone', e.target.value);
+                      }
+                    }}
+                    placeholder="e.g. +91 9876543210 or 9876543210"
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    autoComplete="tel"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Enter the mobile number associated with your Wallpaper Chat account.
+                    This should match the number in your Profile settings.
+                  </p>
+                </div>
+              )}
 
               {/* Error Message */}
               {error && (
@@ -419,7 +539,8 @@ function PaymentPageContent() {
                   loading ||
                   !userEmail ||
                   !userEmail.includes('@') ||
-                  !userId.trim()
+                  (identifierType === 'userId' && !userId.trim()) ||
+                  (identifierType === 'phone' && !userPhone.trim())
                 }
                 className="w-full bg-purple-500 text-white py-4 rounded-lg font-semibold text-lg hover:bg-purple-600 disabled:bg-slate-700 disabled:cursor-not-allowed transition-all">
                 {loading ? 'Processing...' : `Pay ₹${plan.price / 100}`}

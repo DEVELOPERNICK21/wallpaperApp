@@ -25,6 +25,7 @@ import {
 import RNFS from 'react-native-fs';
 import {CameraRoll} from '@react-native-camera-roll/camera-roll';
 import ManageWallpaper from 'react-native-manage-wallpaper';
+import YearCalendar from '../../component/YearCalendar/YearCalendar';
 
 const {width, height} = Dimensions.get('window');
 
@@ -74,7 +75,7 @@ const wallpapers: Wallpaper[] = [
   },
 ];
 
-const categories = ['All', 'Nature', 'Abstract', 'Urban'];
+const categories = ['All', 'Year Calendar', 'Nature', 'Abstract', 'Urban'];
 
 const WallpaperScreen = () => {
   const [selectedWallpaper, setSelectedWallpaper] = useState<string | null>(
@@ -90,6 +91,7 @@ const WallpaperScreen = () => {
   >(null);
   const [downloading, setDownloading] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [showCalendarFullScreen, setShowCalendarFullScreen] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -322,6 +324,8 @@ const WallpaperScreen = () => {
   const filteredWallpapers =
     selectedCategory === 'All'
       ? wallpapers
+      : selectedCategory === 'Year Calendar'
+      ? [] // Show calendar instead
       : wallpapers.filter(w => w.category === selectedCategory);
 
   const renderWallpaperItem = ({item}: {item: Wallpaper; index: number}) => {
@@ -435,14 +439,31 @@ const WallpaperScreen = () => {
           </ScrollView>
         </View>
 
-        <FlatList
-          data={filteredWallpapers}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          renderItem={renderWallpaperItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-        />
+        {selectedCategory === 'Year Calendar' ? (
+          <View style={styles.calendarWrapper}>
+            <TouchableOpacity
+              style={styles.fullScreenCalendarButton}
+              onPress={() => setShowCalendarFullScreen(true)}>
+              <Text style={styles.fullScreenCalendarButtonText}>
+                Open Full Screen Calendar
+              </Text>
+            </TouchableOpacity>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.calendarContainer}>
+              <YearCalendar />
+            </ScrollView>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredWallpapers}
+            keyExtractor={item => item.id}
+            numColumns={2}
+            renderItem={renderWallpaperItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+          />
+        )}
 
         {/* Preview Modal */}
         <Modal
@@ -635,6 +656,20 @@ const WallpaperScreen = () => {
           </View>
         </Modal>
 
+        {/* Full Screen Calendar Modal */}
+        <Modal
+          visible={showCalendarFullScreen}
+          animationType="slide"
+          transparent={false}
+          onRequestClose={() => setShowCalendarFullScreen(false)}>
+          <View style={styles.fullScreenModal}>
+            <YearCalendar
+              fullScreen={true}
+              onClose={() => setShowCalendarFullScreen(false)}
+            />
+          </View>
+        </Modal>
+
         {/* Selected Wallpaper Preview */}
         {selectedWallpaper && (
           <Animated.View
@@ -723,6 +758,35 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: 15,
     paddingBottom: 100,
+  },
+  calendarContainer: {
+    paddingBottom: 100,
+  },
+  calendarWrapper: {
+    flex: 1,
+  },
+  fullScreenCalendarButton: {
+    margin: 15,
+    marginBottom: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#6366f1',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  fullScreenCalendarButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  fullScreenModal: {
+    flex: 1,
+    backgroundColor: '#0f172a',
   },
   wallpaperItem: {
     flex: 1,

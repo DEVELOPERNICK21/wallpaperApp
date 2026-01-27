@@ -45,25 +45,37 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {amount, currency = 'INR', planType, userId, userEmail} = body;
+    const {amount, currency = 'INR', planType, userId, userPhone, userEmail} = body;
 
     // Log received data for debugging
     console.log('Received order creation request:', {
       amount,
       currency,
       planType,
-      userId: userId?.substring(0, 20),
+      hasUserId: !!userId,
+      hasUserPhone: !!userPhone,
       hasEmail: !!userEmail,
     });
 
     // Validate required fields
-    if (!amount || !planType || !userId) {
+    if (!amount || !planType) {
       return NextResponse.json(
         {
           error: 'Missing required fields',
           details: `Missing: ${!amount ? 'amount' : ''} ${
             !planType ? 'planType' : ''
-          } ${!userId ? 'userId' : ''}`.trim(),
+          }`.trim(),
+        },
+        {status: 400},
+      );
+    }
+
+    // Must have either userId or userPhone
+    if (!userId && !userPhone) {
+      return NextResponse.json(
+        {
+          error: 'Missing user identifier',
+          details: 'Please provide either userId or userPhone to identify the account',
         },
         {status: 400},
       );
@@ -96,10 +108,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create receipt ID (Razorpay has limits on receipt length)
-    const receiptId = `receipt_${userId.substring(
-      0,
-      20,
-    )}_${Date.now()}`.substring(0, 40);
+    // Use userId if available, otherwise use normalized phone number
+    const identifier = userId
+      ? userId.substring(0, 20)
+      : userPhone.replace(/[\s\-()]/g, '').substring(0, 15);
+    const receiptId = `receipt_${identifier}_${Date.now()}`.substring(0, 40);
 
     // Create Razorpay order
     const options = {
@@ -108,7 +121,8 @@ export async function POST(request: NextRequest) {
       receipt: receiptId,
       notes: {
         planType: planType,
-        userId: userId.substring(0, 100), // Limit note length
+        userId: userId ? userId.substring(0, 100) : '', // Limit note length
+        userPhone: userPhone ? userPhone.substring(0, 100) : '',
         userEmail: (userEmail || '').substring(0, 100),
       },
     };
@@ -122,7 +136,7 @@ export async function POST(request: NextRequest) {
     const order = await razorpay.orders.create(options);
 
     console.log(
-      `✅ Razorpay order created: ${order.id} for user ${userId}, plan: ${planType}`,
+      `✅ Razorpay order created: ${order.id} for ${userId ? `user ${userId}` : `phone ${userPhone}`}, plan: ${planType}`,
     );
 
     return NextResponse.json({

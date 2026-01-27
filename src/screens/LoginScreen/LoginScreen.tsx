@@ -20,12 +20,8 @@ import {RootState} from '../../redux/reducers';
 import {
   EnterLogin_Icon,
   HideEyePass_Icon,
-  Lock3D_Icon,
   PassEye_Icon,
-  UserVector_Icon,
 } from '../../assets/icons/index.jsx';
-import CommonThinInput from '../../component/Input/CommonThinInput.tsx';
-import CustomMainTextInput from '../../component/CustomMainTextInput.tsx';
 import CustomTextInput from '../../component/CustomTextInput.tsx';
 import CustomButton from '../../component/CustomButton.tsx';
 import {useNavigation} from '@react-navigation/native';
