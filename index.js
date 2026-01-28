@@ -21,6 +21,9 @@ import {name as appName} from './app.json';
 import messaging from '@react-native-firebase/messaging';
 import {handleBackgroundMessage} from './src/services/DisguisedNotificationService';
 
+// Import headless task for background wallpaper updates
+import './src/services/HeadlessTask';
+
 Text.defaultProps = Text.defaultProps || {};
 Text.defaultProps.allowFontScaling = false;
 LogBox.ignoreAllLogs();

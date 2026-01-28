@@ -42,13 +42,30 @@ const Index = () => {
   // Ensures password screen appears on relaunch
   const resetPasswordScreenOnLaunch = async () => {
     await AsyncStorage.removeItem('lastActiveTime');
-    setShowPasswordScreen(true);
-    setScreenToShow(null);
+    // Check if we should skip password for wallpaper mode
+    const skipPasswordForWallpaper = await AsyncStorage.getItem('skipPasswordForWallpaper');
+    if (skipPasswordForWallpaper === 'true') {
+      // Skip password screen and go directly to wallpaper
+      setShowPasswordScreen(false);
+      setScreenToShow('wallpaper');
+    } else {
+      setShowPasswordScreen(true);
+      setScreenToShow(null);
+    }
   };
 
   const handleUnlock = async screen => {
     setShowPasswordScreen(false);
     setScreenToShow(screen);
+    
+    // If unlocking to wallpaper mode, set flag to skip password in future
+    if (screen === 'wallpaper') {
+      await AsyncStorage.setItem('skipPasswordForWallpaper', 'true');
+    } else {
+      // Remove flag if going to chat mode
+      await AsyncStorage.removeItem('skipPasswordForWallpaper');
+    }
+    
     await AsyncStorage.setItem('lastActiveTime', Date.now().toString());
     resetLockTimer();
   };
@@ -57,10 +74,16 @@ const Index = () => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'background') {
         // If app goes to background, store last active time
-        setShowPasswordScreen(true);
+        // Only show password screen if not in wallpaper mode
+        if (screenToShow !== 'wallpaper') {
+          setShowPasswordScreen(true);
+        }
       } else if (appState === 'background' && nextAppState === 'active') {
         // On returning, check inactivity
-        checkInactivity();
+        // Skip password check if in wallpaper mode
+        if (screenToShow !== 'wallpaper') {
+          checkInactivity();
+        }
       }
       setAppState(nextAppState);
     });
@@ -69,10 +92,14 @@ const Index = () => {
       subscription.remove();
       clearTimeout(lockTimerRef.current);
     };
-  }, [appState]);
+  }, [appState, screenToShow]);
 
   // Check if inactive for more than 2 minutes
   const checkInactivity = async () => {
+    // Skip password check if in wallpaper mode
+    if (screenToShow === 'wallpaper') {
+      return;
+    }
     const lastActiveTime = await AsyncStorage.getItem('lastActiveTime');
     if (lastActiveTime) {
       const elapsedTime = Date.now() - parseInt(lastActiveTime, 10);
@@ -85,9 +112,12 @@ const Index = () => {
   // Reset lock timer on activity
   const resetLockTimer = () => {
     clearTimeout(lockTimerRef.current);
-    lockTimerRef.current = setTimeout(() => {
-      setShowPasswordScreen(true);
-    }, LOCK_TIMEOUT);
+    // Don't set lock timer if in wallpaper mode
+    if (screenToShow !== 'wallpaper') {
+      lockTimerRef.current = setTimeout(() => {
+        setShowPasswordScreen(true);
+      }, LOCK_TIMEOUT);
+    }
   };
 
   // Detect user activity (touches, scrolling, typing, etc.)
@@ -109,7 +139,7 @@ const Index = () => {
     <TouchableWithoutFeedback onPress={handleUserActivity}>
       <View style={{flex: 1}} onLayout={handleUserActivity}>
         <NavigationContainer>
-          {showPasswordScreen ? (
+          {showPasswordScreen && screenToShow !== 'wallpaper' ? (
             <PasswordScreen onUnlock={handleUnlock} />
           ) : screenToShow === 'chat' ? (
             user ? (

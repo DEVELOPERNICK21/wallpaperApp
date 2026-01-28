@@ -2922,6 +2922,9 @@ PODS:
     - React-perflogger (= 0.77.0)
     - React-utils (= 0.77.0)
   - RecaptchaInterop (100.0.0)
+  - RNBackgroundFetch (4.3.0):
+    - React-Core
+    - TSBackgroundFetch (~> 4.0.0)
   - RNCAsyncStorage (2.1.1):
     - React-Core
   - RNFastImage (8.6.3):
@@ -3117,6 +3120,7 @@ PODS:
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.10)
   - SocketRocket (0.7.1)
+  - TSBackgroundFetch (4.0.6)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -3195,6 +3199,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - RNBackgroundFetch (from `../node_modules/react-native-background-fetch`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNFastImage (from `../node_modules/react-native-fast-image`)
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
@@ -3244,6 +3249,7 @@ SPEC REPOS:
     - SDWebImage
     - SDWebImageWebPCoder
     - SocketRocket
+    - TSBackgroundFetch
 
 EXTERNAL SOURCES:
   boost:
@@ -3393,6 +3399,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  RNBackgroundFetch:
+    :path: "../node_modules/react-native-background-fetch"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNFastImage:
@@ -3527,6 +3535,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 58a974a1a86362975fd49596480c5f0f17ee06a2
   ReactCommon: e686c5766f0ebe5293be5a3957b833645cdac8ad
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
+  RNBackgroundFetch: a5c9975c270d869a666364ade366d92f7435dd74
   RNCAsyncStorage: af7b591318005069c3795076addc83a4dd5c0a2e
   RNFastImage: 462a183c4b0b6b26fdfd639e1ed6ba37536c3b87
   RNFBApp: 2de7307ecad62fc52f962814167664881c2bc2a6
@@ -3545,8 +3554,9 @@ SPEC CHECKSUMS:
   SDWebImage: a7f831e1a65eb5e285e3fb046a23fcfbf08e696d
   SDWebImageWebPCoder: 908b83b6adda48effe7667cd2b7f78c897e5111d
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  TSBackgroundFetch: 0afbeaae4e1132866e1d4b6e55265af26b5958ae
   Yoga: c34725819ab0a5962e85455b9e56679b306910ee
 
-PODFILE CHECKSUM: 4bdcc567a8ec63cb4fa826d82055bd86c974723c
+PODFILE CHECKSUM: bda4bf94efecee4d40a68c21f2a9481f74bfcaec
 
 COCOAPODS: 1.16.2
