@@ -28,9 +28,35 @@
 		BD966BFD2D5AA1D900C5F6E0 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BD966BFC2D5AA1D900C5F6E0 /* GoogleService-Info.plist */; };
 		D497187A11DC479CAC3EA0F7 /* Poppins-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7398D9D380AD41889856E9FC /* Poppins-ExtraBold.ttf */; };
 		DFFDD271BBFB49F7B6C34E91 /* PlusJakartaSans-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 947531721A2240BDB0EC095F /* PlusJakartaSans-ExtraLight.ttf */; };
+		E1E2E3011A680F5B00A75B9A /* YearProgressWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E2E3021A680F5B00A75B9A /* YearProgressWidget.swift */; };
+		E1E2E3031A680F5B00A75B9A /* YearProgressWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E1E2E3041A680F5B00A75B9A /* YearProgressWidgetExtension.appex */; };
 		ED76699BF7254E4DBE7EA8B8 /* PlusJakartaSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D5DE83A0B148461DBFE1B426 /* PlusJakartaSans-Bold.ttf */; };
 		F8973CC0C9990C6BFB413CB1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E1E2E30F1A680F5B00A75B9A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1E2E3081A680F5B00A75B9A;
+			remoteInfo = YearProgressWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E1E2E30D1A680F5B00A75B9A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E1E2E3031A680F5B00A75B9A /* YearProgressWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* wallpe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = wallpe.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -56,6 +82,9 @@
 		D4C2D5589D434D85B5A3E6E8 /* index.js */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = index.js; path = ../src/assets/fonts/index.js; sourceTree = "<group>"; };
 		D5DE83A0B148461DBFE1B426 /* PlusJakartaSans-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-Bold.ttf"; path = "../src/assets/fonts/PlusJakartaSans-Bold.ttf"; sourceTree = "<group>"; };
 		D6AA3E62F3E04EBBB5C708D2 /* PlusJakartaSans-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-Light.ttf"; path = "../src/assets/fonts/PlusJakartaSans-Light.ttf"; sourceTree = "<group>"; };
+		E1E2E3021A680F5B00A75B9A /* YearProgressWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearProgressWidget.swift; sourceTree = "<group>"; };
+		E1E2E3041A680F5B00A75B9A /* YearProgressWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = YearProgressWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1E2E3051A680F5B00A75B9A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E2516A658FF4425EB3CA4A43 /* Poppins-ExtraLight.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-ExtraLight.ttf"; path = "../src/assets/fonts/Poppins-ExtraLight.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		EEBAD6A8557D47C58D2A2207 /* Poppins-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Regular.ttf"; path = "../src/assets/fonts/Poppins-Regular.ttf"; sourceTree = "<group>"; };
@@ -132,6 +161,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07FAE1A68108700A75B9A /* wallpe */,
+				E1E2E3071A680F5B00A75B9A /* YearProgressWidget */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -147,6 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* wallpe.app */,
+				E1E2E3041A680F5B00A75B9A /* YearProgressWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -158,6 +189,15 @@
 				5709B34CF0A7D63546082F79 /* Pods-wallpe.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		E1E2E3071A680F5B00A75B9A /* YearProgressWidget */ = {
+			isa = PBXGroup;
+			children = (
+				E1E2E3021A680F5B00A75B9A /* YearProgressWidget.swift */,
+				E1E2E3051A680F5B00A75B9A /* Info.plist */,
+			);
+			path = YearProgressWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -176,15 +216,33 @@
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 				6DF18A6CF660D094C96158BB /* [CP-User] [RNFB] Core Configuration */,
 				F8A1B2C3D4E5F6A7B8C9D0E1 /* [CP] Fix Hermes Code Signing */,
+				E1E2E30D1A680F5B00A75B9A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E1E2E30E1A680F5B00A75B9A /* PBXTargetDependency */,
 			);
 			name = wallpe;
 			productName = wallpe;
 			productReference = 13B07F961A680F5B00A75B9A /* wallpe.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E1E2E3081A680F5B00A75B9A /* YearProgressWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1E2E3091A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "YearProgressWidgetExtension" */;
+			buildPhases = (
+				E1E2E30A1A680F5B00A75B9A /* Sources */,
+				E1E2E30C1A680F5B00A75B9A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YearProgressWidgetExtension;
+			productName = YearProgressWidgetExtension;
+			productReference = E1E2E3041A680F5B00A75B9A /* YearProgressWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -213,6 +271,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* wallpe */,
+				E1E2E3081A680F5B00A75B9A /* YearProgressWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -243,6 +302,13 @@
 				AD4597E24A1C4DD5A482765A /* Poppins-SemiBold.ttf in Resources */,
 				198ECD899BA94603B848D163 /* Poppins-Thin.ttf in Resources */,
 				26D8D51B3CDE4B49A2C32400 /* index.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1E2E30C1A680F5B00A75B9A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -359,7 +425,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1E2E30A1A680F5B00A75B9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1E2E3011A680F5B00A75B9A /* YearProgressWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E1E2E30E1A680F5B00A75B9A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1E2E3081A680F5B00A75B9A /* YearProgressWidgetExtension */;
+			targetProxy = E1E2E30F1A680F5B00A75B9A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -606,6 +688,57 @@
 			};
 			name = Release;
 		};
+		E1E2E3101A680F5B00A75B9A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 83N78B2XWV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YearProgressWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.developernick.wallpe.YearProgressWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E1E2E3111A680F5B00A75B9A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 83N78B2XWV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YearProgressWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.developernick.wallpe.YearProgressWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -623,6 +756,15 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E1E2E3091A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "YearProgressWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1E2E3101A680F5B00A75B9A /* Debug */,
+				E1E2E3111A680F5B00A75B9A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

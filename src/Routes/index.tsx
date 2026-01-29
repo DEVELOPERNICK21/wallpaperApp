@@ -43,7 +43,9 @@ const Index = () => {
   const resetPasswordScreenOnLaunch = async () => {
     await AsyncStorage.removeItem('lastActiveTime');
     // Check if we should skip password for wallpaper mode
-    const skipPasswordForWallpaper = await AsyncStorage.getItem('skipPasswordForWallpaper');
+    const skipPasswordForWallpaper = await AsyncStorage.getItem(
+      'skipPasswordForWallpaper',
+    );
     if (skipPasswordForWallpaper === 'true') {
       // Skip password screen and go directly to wallpaper
       setShowPasswordScreen(false);
@@ -57,7 +59,7 @@ const Index = () => {
   const handleUnlock = async screen => {
     setShowPasswordScreen(false);
     setScreenToShow(screen);
-    
+
     // If unlocking to wallpaper mode, set flag to skip password in future
     if (screen === 'wallpaper') {
       await AsyncStorage.setItem('skipPasswordForWallpaper', 'true');
@@ -65,7 +67,7 @@ const Index = () => {
       // Remove flag if going to chat mode
       await AsyncStorage.removeItem('skipPasswordForWallpaper');
     }
-    
+
     await AsyncStorage.setItem('lastActiveTime', Date.now().toString());
     resetLockTimer();
   };

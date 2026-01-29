@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Wallpaper</string>
+    <string name="widget_year_progress_description">Track the current year\'s progress: days passed, days left, and percentage.</string>
+    <string name="widget_days_passed_format">%dd passed</string>
+    <string name="widget_days_left_format">%dd Left</string>
+    <string name="widget_percentage_format">%.1f%% of year passed</string>
+    <string name="widget_label_days_passed">Days passed</string>
+    <string name="widget_label_days_left">Days left</string>
+    <string name="widget_subtitle_percentage">of year</string>
+    <string name="widget_percentage_value">%.1f%%</string>
 </resources>

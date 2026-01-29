@@ -72,5 +72,18 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.developernick.wallpe</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>wallpe</string>
+			</array>
+			<key>CFBundleRoleEditor</key>
+			<string>Viewer</string>
+		</dict>
+	</array>
 </dict>
 </plist>
