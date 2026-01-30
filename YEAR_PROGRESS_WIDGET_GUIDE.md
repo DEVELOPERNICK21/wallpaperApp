@@ -114,3 +114,9 @@ Implementation: add a view (e.g. `ImageView` or `TextView`) with a PendingIntent
 - **More interactive UX**: add separate tap actions (e.g. open app to a specific screen, share), “next milestone” and short motivational text, an explicit “Refresh” tap target, and optional visual/theming and multi-size layout improvements.
 
 If you tell me which of these you want first (e.g. “different tap actions + next milestone”), I can outline the exact code changes step by step.
+
+---
+
+## iOS Widget – Re-enabling After "Can't Run App"
+
+If the main app was changed so it **no longer builds or embeds** the Year Progress widget (to fix "can't run app" after adding the widget), the widget extension target still exists but is not built when you run **wallpe**. To run the app with the widget again: add **YearProgressWidgetExtension** as a dependency of **wallpe** and add an "Embed Foundation Extensions" phase that embeds **YearProgressWidgetExtension.appex** in Xcode, or ask to "re-add the Year Progress widget to the iOS app build" to restore this in `project.pbxproj`.
