@@ -5,3 +5,10 @@
 
 export {default as FirebaseService} from './firebase/FirebaseService';
 export type {GroupChat, Message, User} from './firebase/FirebaseService';
+
+export {default as WallHavenService} from './WallHavenService';
+export type {
+  WallHavenWallpaper,
+  WallHavenSearchParams,
+  WallHavenSearchResponse,
+} from './WallHavenService';

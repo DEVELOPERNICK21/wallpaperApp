@@ -27,9 +27,12 @@ const STORAGE_KEYS = {
 const PasswordScreen = ({
   onUnlock,
   isLockScreen = false,
+  unlockMode,
 }: {
-  onUnlock: (type?: string) => void;
+  onUnlock: (type?: string | null) => void;
   isLockScreen?: boolean;
+  /** When 'chatOnly', only first password unlocks to chat; second password or cancel closes */
+  unlockMode?: 'chatOnly';
 }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -124,7 +127,7 @@ const PasswordScreen = ({
 
   const handleUnlock = async () => {
     if (password.length === 0) {
-      Alert.alert('Error', 'Please enter a password');
+      Alert.alert('Required', 'Please enter your PIN');
       return;
     }
 
@@ -149,24 +152,25 @@ const PasswordScreen = ({
         if (attempts >= 2) {
           Alert.alert(
             'Too Many Attempts',
-            'You have exceeded the maximum login attempts. Please try again later.',
+            'Please try again later.',
             [{text: 'OK', onPress: () => setPassword('')}],
           );
           setAttempts(0);
         } else {
           Alert.alert(
-            'Incorrect Password',
-            `Incorrect password. ${3 - attempts} attempts remaining.`,
+            'Incorrect PIN',
+            `${3 - attempts} attempts remaining.`,
             [{text: 'OK', onPress: () => setPassword('')}],
           );
         }
       }
     } else {
-      // Initial login mode: Navigate based on password
+      // Initial login / premium unlock: Navigate based on password
       if (password === firstPassword) {
         onUnlock('chat'); // Navigate to Chat Stack
       } else if (password === secondPassword) {
-        onUnlock('wallpaper'); // Navigate to Wallpaper Stack
+        // Navigate to wallpaper (in chatOnly mode, handler will just close and stay on wallpaper)
+        onUnlock('wallpaper');
       } else {
         setAttempts(prev => prev + 1);
         shakeAnimation();
@@ -175,14 +179,14 @@ const PasswordScreen = ({
         if (attempts >= 2) {
           Alert.alert(
             'Too Many Attempts',
-            'You have exceeded the maximum login attempts. Please try again later.',
+            'Please try again later.',
             [{text: 'OK', onPress: () => setPassword('')}],
           );
           setAttempts(0);
         } else {
           Alert.alert(
-            'Incorrect Password',
-            `Incorrect password. ${3 - attempts} attempts remaining.`,
+            'Incorrect PIN',
+            `${3 - attempts} attempts remaining.`,
             [{text: 'OK', onPress: () => setPassword('')}],
           );
         }
@@ -199,7 +203,7 @@ const PasswordScreen = ({
   };
 
   const getAttemptsText = () => {
-    if (attempts === 0) return 'Ready to unlock';
+    if (attempts === 0) return 'Enter PIN to continue';
     if (attempts === 1) return '2 attempts remaining';
     return '1 attempt remaining';
   };
@@ -233,12 +237,12 @@ const PasswordScreen = ({
             {/* Header Section */}
             <View style={styles.headerSection}>
               <View style={styles.iconContainer}>
-                <Text style={styles.lockIcon}>🔒</Text>
+                <Text style={styles.lockIcon}>✨</Text>
               </View>
 
-              <Text style={styles.title}>Secure Access</Text>
+              <Text style={styles.title}>Unlock Premium Wallpapers</Text>
               <Text style={styles.subtitle}>
-                Enter your password to unlock the application
+                Enter your PIN to access premium wallpaper collection
               </Text>
             </View>
 
@@ -257,7 +261,7 @@ const PasswordScreen = ({
                   keyboardType="number-pad"
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Enter password"
+                  placeholder="Enter PIN"
                   placeholderTextColor="#94a3b8"
                   maxLength={6}
                   onKeyPress={handleKeyPress}
@@ -310,10 +314,10 @@ const PasswordScreen = ({
                   {isLoading ? (
                     <View style={styles.loadingContainer}>
                       <View style={styles.spinner} />
-                      <Text style={styles.loadingText}>Unlocking...</Text>
+                      <Text style={styles.loadingText}>Verifying...</Text>
                     </View>
                   ) : (
-                    <Text style={styles.unlockButtonText}>Unlock</Text>
+                    <Text style={styles.unlockButtonText}>Unlock Access</Text>
                   )}
                 </TouchableOpacity>
               </Animated.View>
@@ -330,13 +334,21 @@ const PasswordScreen = ({
                   Clear
                 </Text>
               </TouchableOpacity>
+
+              {unlockMode === 'chatOnly' && (
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => onUnlock('wallpaper')}>
+                  <Text style={styles.cancelButtonText}>Not now</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>
-                For security reasons, your session will be limited after
-                multiple failed attempts.
+                Premium access is protected. Multiple failed attempts may
+                temporarily limit access.
               </Text>
             </View>
           </Animated.View>
@@ -502,6 +514,15 @@ const styles = StyleSheet.create({
   },
   clearButtonDisabled: {
     color: '#64748b',
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    color: '#94a3b8',
+    fontSize: 16,
   },
   footer: {
     position: 'absolute',

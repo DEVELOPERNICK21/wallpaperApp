@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
+  Pressable,
   Modal,
   StyleSheet,
   Dimensions,
@@ -16,6 +17,7 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  TextInput,
 } from 'react-native';
 import {
   GestureHandlerRootView,
@@ -31,6 +33,12 @@ import {
   isWallpaperSupported,
   testWithStaticImage,
 } from '../../utils/WallpaperManager';
+import WallHavenService, {
+  WallHavenWallpaper,
+  WallHavenSearchParams,
+} from '../../services/WallHavenService';
+import {useDispatch} from 'react-redux';
+import {requestChatAccess} from '../../redux/actions/appState';
 
 const {width, height} = Dimensions.get('window');
 
@@ -39,50 +47,14 @@ interface Wallpaper {
   url: string;
   category: string;
   name: string;
+  thumbnail?: string; // For grid display
 }
 
-const wallpapers: Wallpaper[] = [
-  {
-    id: '1',
-    url: 'https://images.unsplash.com/photo-1511300636408-a63a89df3482?q=80&w=2970&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    category: 'Nature',
-    name: 'Mountain Sunset',
-  },
-  {
-    id: '2',
-    url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2970&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    category: 'Abstract',
-    name: 'Colorful Waves',
-  },
-  {
-    id: '3',
-    url: 'https://images.unsplash.com/photo-1491466424936-e304919aada7?q=80&w=2969&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    category: 'Nature',
-    name: 'Forest Path',
-  },
-  {
-    id: '4',
-    url: 'https://images.unsplash.com/photo-1563387852576-964bc31b73af?q=80&w=3007&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    category: 'Urban',
-    name: 'City Lights',
-  },
-  {
-    id: '5',
-    url: 'https://images.unsplash.com/photo-1512850183-6d7990f42385?q=80&w=3087&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    category: 'Abstract',
-    name: 'Geometric',
-  },
-  {
-    id: '6',
-    url: 'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?q=80&w=2970&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    category: 'Nature',
-    name: 'Ocean View',
-  },
-];
-
-const categories = ['Year Calendar', 'All', 'Nature', 'Abstract', 'Urban'];
+const categories = ['Year Calendar', 'All', 'General', 'Anime', 'People'];
 
 const WallpaperScreen = () => {
+  const dispatch = useDispatch();
+  const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [selectedWallpaper, setSelectedWallpaper] = useState<string | null>(
     null,
   );
@@ -103,16 +75,103 @@ const WallpaperScreen = () => {
   const [imageErrors, setImageErrors] = useState<{[key: string]: boolean}>({});
   const [previewImageError, setPreviewImageError] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
+  
+  // WallHaven API states
+  const [loadingWallpapers, setLoadingWallpapers] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const headerAnim = useRef(new Animated.Value(0)).current;
 
+  // Convert WallHaven wallpaper to app format
+  const convertWallHavenToWallpaper = (wh: WallHavenWallpaper): Wallpaper => {
+    // Use first tag as name, or fallback to category
+    const name = wh.tags && wh.tags.length > 0 
+      ? wh.tags[0].name.charAt(0).toUpperCase() + wh.tags[0].name.slice(1)
+      : wh.category.charAt(0).toUpperCase() + wh.category.slice(1);
+    
+    return {
+      id: wh.id,
+      url: wh.path, // Full resolution image
+      thumbnail: wh.thumbs.large, // Thumbnail for grid
+      category: wh.category.charAt(0).toUpperCase() + wh.category.slice(1),
+      name: name,
+    };
+  };
+
+  // Fetch wallpapers from WallHaven API
+  const fetchWallpapers = async (page: number = 1, reset: boolean = false) => {
+    try {
+      setLoadingWallpapers(true);
+      setError(null);
+
+      const params: WallHavenSearchParams = {
+        page,
+        sorting: 'date_added',
+        order: 'desc',
+        purity: '100', // SFW only
+        atleast: '1920x1080', // Minimum resolution
+      };
+
+      // Handle category filter
+      if (selectedCategory === 'General') {
+        params.categories = '100'; // general only
+      } else if (selectedCategory === 'Anime') {
+        params.categories = '010'; // anime only
+      } else if (selectedCategory === 'People') {
+        params.categories = '001'; // people only
+      } else if (selectedCategory === 'All') {
+        params.categories = '111'; // all categories
+      }
+
+      // Add search query if provided
+      if (searchQuery.trim()) {
+        params.q = searchQuery.trim();
+      }
+
+      const response = await WallHavenService.search(params);
+      
+      const convertedWallpapers = response.data.map(convertWallHavenToWallpaper);
+      
+      if (reset) {
+        setWallpapers(convertedWallpapers);
+      } else {
+        setWallpapers(prev => [...prev, ...convertedWallpapers]);
+      }
+
+      setHasMore(page < response.meta.last_page);
+      setCurrentPage(page);
+      
+      console.log(`✅ Loaded ${convertedWallpapers.length} wallpapers (Page ${page}/${response.meta.last_page})`);
+    } catch (err: any) {
+      console.error('❌ Error fetching wallpapers:', err);
+      setError(err.message || 'Failed to load wallpapers');
+      
+      // Show error alert
+      Alert.alert(
+        'Error Loading Wallpapers',
+        err.message || 'Failed to fetch wallpapers. Please check your internet connection and try again.',
+        [{text: 'OK'}]
+      );
+    } finally {
+      setLoadingWallpapers(false);
+    }
+  };
+
+  // Load more wallpapers (pagination)
+  const loadMoreWallpapers = () => {
+    if (!loadingWallpapers && hasMore) {
+      fetchWallpapers(currentPage + 1, false);
+    }
+  };
+
   useEffect(() => {
     console.log('📱 WallpaperScreen mounted');
-    console.log('📱 Total wallpapers:', wallpapers.length);
-    console.log('📱 Selected category:', selectedCategory);
     Animated.parallel([
       Animated.timing(headerAnim, {
         toValue: 1,
@@ -126,7 +185,16 @@ const WallpaperScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [headerAnim, slideAnim, selectedCategory]);
+
+    // Load initial wallpapers
+    fetchWallpapers(1, true);
+  }, []);
+
+  // Reload when category changes
+  useEffect(() => {
+    setSearchQuery(''); // Reset search when category changes
+    fetchWallpapers(1, true);
+  }, [selectedCategory]);
 
   // Request Storage Permission (Android)
   const requestStoragePermission = async (): Promise<boolean> => {
@@ -523,11 +591,9 @@ const WallpaperScreen = () => {
   };
 
   const filteredWallpapers =
-    selectedCategory === 'All'
-      ? wallpapers
-      : selectedCategory === 'Year Calendar'
+    selectedCategory === 'Year Calendar'
       ? [] // Show calendar instead
-      : wallpapers.filter(w => w.category === selectedCategory);
+      : wallpapers; // Already filtered by API based on category
 
   const renderWallpaperItem = ({item}: {item: Wallpaper; index: number}) => {
     const isSelected = selectedWallpaper === item.url;
@@ -578,7 +644,7 @@ const WallpaperScreen = () => {
               key={`wallpaper-${item.id}-${
                 selectedWallpaper === item.url ? 'selected' : 'normal'
               }`}
-              source={{uri: item.url}}
+              source={{uri: item.thumbnail || item.url}}
               style={styles.wallpaper}
               resizeMode="cover"
               onLoadStart={() => {
@@ -671,12 +737,16 @@ const WallpaperScreen = () => {
             },
           ]}>
           <View style={styles.headerTopRow}>
-            <View>
+            <Pressable
+              onLongPress={() => dispatch(requestChatAccess())}
+              delayLongPress={600}
+              hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}
+              style={styles.headerTitleTouchable}>
               <Text style={styles.headerTitle}>Wallpapers</Text>
               <Text style={styles.headerSubtitle}>
                 Choose your perfect background
               </Text>
-            </View>
+            </Pressable>
             {Platform.OS === 'android' && __DEV__ && (
               <TouchableOpacity
                 style={styles.debugButton}
@@ -738,14 +808,79 @@ const WallpaperScreen = () => {
             </ScrollView>
           </View>
         ) : (
-          <FlatList
-            data={filteredWallpapers}
-            keyExtractor={item => item.id}
-            numColumns={2}
-            renderItem={renderWallpaperItem}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
-          />
+          <>
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search wallpapers..."
+                placeholderTextColor="#94a3b8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={() => {
+                  if (searchQuery.trim()) {
+                    fetchWallpapers(1, true);
+                  }
+                }}
+                returnKeyType="search"
+              />
+              {searchQuery.trim() && (
+                <TouchableOpacity
+                  style={styles.clearSearchButton}
+                  onPress={() => {
+                    setSearchQuery('');
+                    fetchWallpapers(1, true);
+                  }}>
+                  <Text style={styles.clearSearchText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {loadingWallpapers && wallpapers.length === 0 ? (
+              <View style={styles.initialLoadingContainer}>
+                <ActivityIndicator size="large" color="#6366f1" />
+                <Text style={styles.loadingText}>Loading wallpapers...</Text>
+              </View>
+            ) : error && wallpapers.length === 0 ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => fetchWallpapers(1, true)}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+              data={filteredWallpapers}
+              keyExtractor={item => item.id}
+              numColumns={2}
+              renderItem={renderWallpaperItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContainer}
+              onEndReached={loadMoreWallpapers}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                loadingWallpapers ? (
+                  <View style={styles.loadingFooter}>
+                    <ActivityIndicator size="large" color="#6366f1" />
+                    <Text style={styles.loadingText}>Loading more...</Text>
+                  </View>
+                ) : null
+              }
+              ListEmptyComponent={
+                !loadingWallpapers ? (
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No wallpapers found</Text>
+                    <Text style={styles.emptySubtext}>
+                      Try a different search or category
+                    </Text>
+                  </View>
+                ) : null
+              }
+              />
+            )}
+          </>
         )}
 
         {/* Preview Modal */}
@@ -1128,6 +1263,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#94a3b8',
     fontWeight: '500',
+  },
+  headerTitleTouchable: {
+    flex: 1,
   },
   debugButton: {
     width: 36,
@@ -1676,11 +1814,86 @@ const styles = StyleSheet.create({
   buttonLoader: {
     marginLeft: 8,
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 15,
+    marginBottom: 15,
+    marginTop: 10,
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  searchInput: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 16,
+    paddingVertical: 12,
+  },
+  clearSearchButton: {
+    padding: 5,
+    marginLeft: 10,
+  },
+  clearSearchText: {
+    color: '#94a3b8',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   errorContainer: {
     backgroundColor: '#1e293b',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    marginHorizontal: 15,
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  retryButton: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingFooter: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginTop: 10,
+  },
+  emptyContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    color: '#94a3b8',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    color: '#64748b',
+    fontSize: 14,
+  },
+  initialLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 100,
   },
   errorIcon: {
     fontSize: 32,
@@ -1691,17 +1904,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 12,
     textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: '#6366f1',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
   },
   previewLoaderContainer: {
     position: 'absolute',

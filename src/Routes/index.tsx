@@ -4,25 +4,33 @@ import {
   AppState,
   TouchableWithoutFeedback,
   View,
-  InteractionManager,
 } from 'react-native';
+import {useSelector, useDispatch} from 'react-redux';
 import AuthNavigation from './AuthNavigation';
 import AppRoutes from './AppRoutes';
 import {getAuth, onAuthStateChanged} from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WallpaperStack from './WallpaperStack';
 import {PasswordScreen, SplashScreen} from '../screens';
+import {resetChatAccessRequest} from '../redux/actions/appState';
 
 const LOCK_TIMEOUT = 3 * 60 * 1000; // 2 minutes
 
 const Index = () => {
+  const dispatch = useDispatch();
+  const requestChatAccessFromRedux = useSelector(
+    (state: {appStateInfo: {requestChatAccess?: boolean}}) =>
+      state.appStateInfo?.requestChatAccess ?? false,
+  );
   const [initializing, setInitializing] = useState(false);
   const [user, setUser] = useState(null);
   const [showPasswordScreen, setShowPasswordScreen] = useState(true);
-  const [screenToShow, setScreenToShow] = useState(null);
+  const [screenToShow, setScreenToShow] = useState<string | null>(null);
   const [appState, setAppState] = useState(AppState.currentState);
 
   const lockTimerRef = useRef(null);
+  const unlockForChatOnly =
+    screenToShow === 'wallpaper' && requestChatAccessFromRedux;
 
   useEffect(() => {
     resetPasswordScreenOnLaunch();
@@ -56,9 +64,18 @@ const Index = () => {
     }
   };
 
-  const handleUnlock = async screen => {
+  const handleUnlock = async (screen: string | null) => {
     setShowPasswordScreen(false);
-    setScreenToShow(screen);
+    dispatch(resetChatAccessRequest());
+
+    // When requesting chat from wallpaper: second password or cancel = stay on wallpaper
+    if (unlockForChatOnly && screen === 'wallpaper') {
+      return;
+    }
+
+    if (screen !== null) {
+      setScreenToShow(screen);
+    }
 
     // If unlocking to wallpaper mode, set flag to skip password in future
     if (screen === 'wallpaper') {
@@ -137,12 +154,20 @@ const Index = () => {
     return <SplashScreen />;
   }
 
+  // Wallpaper: show password only on long-press (hidden chat). Chat/null: show password when locked.
+  const showPassword =
+    (screenToShow === 'wallpaper' && requestChatAccessFromRedux) ||
+    (screenToShow !== 'wallpaper' && showPasswordScreen);
+
   return (
     <TouchableWithoutFeedback onPress={handleUserActivity}>
       <View style={{flex: 1}} onLayout={handleUserActivity}>
         <NavigationContainer>
-          {showPasswordScreen && screenToShow !== 'wallpaper' ? (
-            <PasswordScreen onUnlock={handleUnlock} />
+          {showPassword ? (
+            <PasswordScreen
+              onUnlock={handleUnlock}
+              unlockMode={unlockForChatOnly ? 'chatOnly' : undefined}
+            />
           ) : screenToShow === 'chat' ? (
             user ? (
               <AppRoutes />

@@ -60,11 +60,11 @@ struct YearProgressProvider: TimelineProvider {
     }
 }
 
-// MARK: - Colors (match Android) — use SwiftUI.Color to avoid overload ambiguity
+// MARK: - Colors (match Android) — explicit SwiftUI.Color to avoid overload ambiguity
 
-private let accentColor: SwiftUI.Color = SwiftUI.Color(red: 187/255, green: 134/255, blue: 252/255)  // #BB86FC
-private let pendingDotColor: SwiftUI.Color = SwiftUI.Color(red: 51/255, green: 51/255, blue: 51/255)  // #333333
-private let subtitleGray: SwiftUI.Color = SwiftUI.Color(red: 128/255, green: 128/255, blue: 128/255) // #808080
+private let widgetPurple: SwiftUI.Color = SwiftUI.Color(red: 187/255, green: 134/255, blue: 252/255)  // #BB86FC
+private let widgetDotMuted: SwiftUI.Color = SwiftUI.Color(red: 51/255, green: 51/255, blue: 51/255)    // #333333
+private let widgetSubtitleGray: SwiftUI.Color = SwiftUI.Color(red: 128/255, green: 128/255, blue: 128/255) // #808080
 
 // MARK: - Widget View
 
@@ -72,62 +72,166 @@ struct YearProgressWidgetView: View {
     var entry: YearProgressEntry
     @Environment(\.widgetFamily) var family
 
-    private let cols = 25
-    private let rows = 15
-    private let totalDots = 365
+    private let cols = 6  // 6 columns for 12 months (2 rows)
+    private let totalDots = 12  // 12 months instead of 365 days
 
+    @ViewBuilder
     var body: some View {
+        if #available(iOS 16.0, *) {
+            switch family {
+            case .accessoryRectangular:
+                lockScreenView
+            case .accessoryCircular:
+                lockScreenCircularView
+            case .accessoryInline:
+                lockScreenInlineView
+            default:
+                homeScreenView
+            }
+        } else {
+            homeScreenView
+        }
+    }
+    
+    // MARK: - Home Screen View
+    
+    private var homeScreenView: some View {
         VStack(spacing: 0) {
-            // Dot grid (365 dots: 25 x 15)
+            // Dot grid (12 months)
             dotGrid
-                .padding(.top, 4)
-                .padding(.bottom, 6)
+                .padding(.top, isLarge ? 16 : 8)
+                .padding(.bottom, isLarge ? 12 : 8)
+            
+            // Progress bar
+            progressBar
+                .padding(.bottom, isLarge ? 16 : 10)
 
             // Days row: "30d passed" and "335d Left"
-            HStack(spacing: 16) {
+            HStack(spacing: isLarge ? 24 : 12) {
                 Text("\(entry.daysPassed)d passed")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: isLarge ? 24 : 16, weight: .bold))
                     .foregroundColor(.white)
                 Text("\(entry.daysLeft)d Left")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(accentColor)
+                    .font(.system(size: isLarge ? 24 : 16, weight: .bold))
+                    .foregroundColor(widgetPurple)
             }
-            .padding(.top, 4)
+            .padding(.top, isLarge ? 16 : 8)
 
             // Percentage
             Text(String(format: "%.1f%%", entry.percentage))
-                .font(.system(size: 26, weight: .bold))
-                .foregroundColor(accentColor)
-                .padding(.top, 6)
+                .font(.system(size: isLarge ? 32 : 22, weight: .bold))
+                .foregroundColor(widgetPurple)
+                .padding(.top, isLarge ? 16 : 10)
 
             // Subtitle
             Text("of year")
-                .font(.system(size: 13))
-                .foregroundColor(subtitleGray)
-                .padding(.top, 2)
+                .font(.system(size: isLarge ? 16 : 12))
+                .foregroundColor(widgetSubtitleGray)
+                .padding(.top, isLarge ? 8 : 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(12)
-        .background(SwiftUI.Color.black)
+        .padding(isLarge ? 24 : 12)
+        .widgetBackground(SwiftUI.Color.black)
         .widgetURL(URL(string: "wallpe://year-progress"))
     }
+    
+    // MARK: - Lock Screen Views
+    
+    private var lockScreenView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("\(entry.daysPassed)d passed")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("•")
+                    .foregroundColor(.secondary)
+                Text("\(entry.daysLeft)d left")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            Text(String(format: "%.1f%% of year", entry.percentage))
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var lockScreenCircularView: some View {
+        VStack(spacing: 2) {
+            Text(String(format: "%.0f%%", entry.percentage))
+                .font(.system(size: 20, weight: .bold))
+            Text("\(entry.daysPassed)")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private var lockScreenInlineView: some View {
+        Text(String(format: "%.1f%% of year • %d days passed", entry.percentage, entry.daysPassed))
+            .font(.system(size: 14))
+    }
+    
+    private var isLarge: Bool {
+        family == .systemLarge
+    }
 
-    private func color(forDay day: Int) -> SwiftUI.Color {
-        if day <= entry.daysPassed { return accentColor }
-        return pendingDotColor
+    private func dotColor(forMonth month: Int) -> SwiftUI.Color {
+        let calendar = Calendar.current
+        let currentMonth = calendar.component(.month, from: entry.date)
+        // Highlight past months and current month
+        if month <= currentMonth { return widgetPurple }
+        return widgetDotMuted
     }
 
     private var dotGrid: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: cols)
-        return LazyVGrid(columns: columns, spacing: 2) {
-            ForEach(0..<totalDots, id: \.self) { index in
-                let day = index + 1
+        let dotSize: CGFloat = isLarge ? 12 : 10
+        let spacing: CGFloat = isLarge ? 12 : 8
+        let columns = Array(repeating: GridItem(.flexible(), spacing: spacing), count: cols)
+        
+        return LazyVGrid(columns: columns, spacing: spacing) {
+            ForEach(1...12, id: \.self) { month in
+                let fillColor: SwiftUI.Color = dotColor(forMonth: month)
                 Circle()
-                    .fill(color(forDay: day))
-                    .aspectRatio(1, contentMode: .fit)
+                    .fill(fillColor)
+                    .frame(width: dotSize, height: dotSize)
             }
         }
-        .frame(minHeight: 120)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, isLarge ? 8 : 4)
+    }
+    
+    private var progressBar: some View {
+        let progress = entry.percentage / 100.0
+        let barHeight: CGFloat = isLarge ? 6 : 4
+        
+        return GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Background
+                RoundedRectangle(cornerRadius: barHeight / 2)
+                    .fill(widgetDotMuted)
+                    .frame(height: barHeight)
+                
+                // Progress fill
+                RoundedRectangle(cornerRadius: barHeight / 2)
+                    .fill(widgetPurple)
+                    .frame(width: geometry.size.width * progress, height: barHeight)
+            }
+        }
+        .frame(height: barHeight)
+        .padding(.horizontal, isLarge ? 8 : 4)
+    }
+}
+
+// MARK: - View Extension for Background Compatibility
+
+extension View {
+    @ViewBuilder
+    func widgetBackground(_ color: SwiftUI.Color) -> some View {
+        if #available(iOS 17.0, *) {
+            self.containerBackground(for: .widget) {
+                color
+            }
+        } else {
+            self.background(color)
+        }
     }
 }
 
@@ -135,6 +239,14 @@ struct YearProgressWidgetView: View {
 
 struct YearProgressWidget: Widget {
     let kind: String = "YearProgressWidget"
+    
+    private var supportedWidgetFamilies: [WidgetFamily] {
+        var families: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge]
+        if #available(iOS 16.0, *) {
+            families.append(contentsOf: [.accessoryRectangular, .accessoryCircular, .accessoryInline])
+        }
+        return families
+    }
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: YearProgressProvider()) { entry in
@@ -142,7 +254,7 @@ struct YearProgressWidget: Widget {
         }
         .configurationDisplayName("Year Progress")
         .description("Track the current year's progress: days passed, days left, and percentage.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies(supportedWidgetFamilies)
     }
 }
 

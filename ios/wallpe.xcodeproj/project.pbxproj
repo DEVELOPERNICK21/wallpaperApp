@@ -214,9 +214,9 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
+				E1E2E30D1A680F5B00A75B9A /* Embed Foundation Extensions */,
 				6DF18A6CF660D094C96158BB /* [CP-User] [RNFB] Core Configuration */,
 				F8A1B2C3D4E5F6A7B8C9D0E1 /* [CP] Fix Hermes Code Signing */,
-				E1E2E30D1A680F5B00A75B9A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
