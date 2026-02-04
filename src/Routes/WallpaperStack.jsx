@@ -7,7 +7,7 @@ import {Easing, SafeAreaView} from 'react-native';
 import ScreenConstants from './ScreenConstants';
 import {colors} from '../assets/color';
 import fonts from '../assets/fonts';
-import {Wallpaper} from '../screens';
+import {Wallpaper, DynamicIslandSettingsScreen, PetScreen, SubscriptionScreen} from '../screens';
 
 const Stack = createStackNavigator();
 
@@ -50,6 +50,21 @@ const WallpaperStack = () => {
         <Stack.Screen
           name={ScreenConstants?.WALLPAPER_SCREEN}
           component={Wallpaper}
+          options={{headerShown: false, title: ''}}
+        />
+        <Stack.Screen
+          name={ScreenConstants?.DYNAMIC_ISLAND_SETTINGS_SCREEN}
+          component={DynamicIslandSettingsScreen}
+          options={{headerShown: false, title: ''}}
+        />
+        <Stack.Screen
+          name={ScreenConstants?.PET_SCREEN}
+          component={PetScreen}
+          options={{headerShown: false, title: ''}}
+        />
+        <Stack.Screen
+          name={ScreenConstants?.SUBSCRIPTION_SCREEN}
+          component={SubscriptionScreen}
           options={{headerShown: false, title: ''}}
         />
       </Stack.Navigator>

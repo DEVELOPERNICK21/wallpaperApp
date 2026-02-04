@@ -20,6 +20,8 @@ export {default as SettingsScreen} from './SettingsScreen/SettingsScreen';
 export {default as PrivacySecurityScreen} from './SettingsScreen/PrivacySecurityScreen';
 export {default as PrivacyPolicyScreen} from './SettingsScreen/PrivacyPolicyScreen';
 export {default as NotificationSettingsScreen} from './SettingsScreen/NotificationSettingsScreen';
+export {default as DynamicIslandSettingsScreen} from './SettingsScreen/DynamicIslandSettingsScreen';
+export {default as PetScreen} from './PetScreen/PetScreen';
 export {default as PopUp} from './PopUp/PopUp';
 export {default as ChatScreen} from './ChatScreen/ChatScreen';
 export {default as NewChatRoom} from './NewChatRoom/NewChatRoom';

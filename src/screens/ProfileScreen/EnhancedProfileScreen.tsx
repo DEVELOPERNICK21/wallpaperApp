@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useMemo} from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Platform,
 } from 'react-native';
 import {useSelector, useDispatch} from 'react-redux';
 import {useNavigation} from '@react-navigation/native';
@@ -375,7 +376,7 @@ const EnhancedProfileScreen = () => {
     }
   };
 
-  const menuItems = [
+  const menuItems = useMemo(() => [
     {
       id: 'subscription',
       icon: '💎',
@@ -425,7 +426,50 @@ const EnhancedProfileScreen = () => {
         navigation.navigate(ScreenConstants.PRIVACY_SECURITY_SCREEN as never),
       color: '#8b5cf6',
     },
-  ];
+    ...(Platform.OS === 'ios'
+      ? [
+          {
+            id: 'dynamicIsland',
+            icon: '🏝️',
+            title: 'Dynamic Island',
+            subtitle: 'Live year progress on Dynamic Island',
+            onPress: () => {
+              console.log('🏝️ Dynamic Island button pressed!');
+              console.log('Navigation object:', navigation);
+              console.log('Screen constant:', ScreenConstants.DYNAMIC_ISLAND_SETTINGS_SCREEN);
+              
+              try {
+                const screenName = ScreenConstants.DYNAMIC_ISLAND_SETTINGS_SCREEN;
+                
+                // Verify navigation is available
+                if (!navigation) {
+                  Alert.alert('Error', 'Navigation is not available');
+                  return;
+                }
+                
+                if (typeof navigation.navigate !== 'function') {
+                  Alert.alert('Error', 'Navigation.navigate is not a function');
+                  return;
+                }
+                
+                // Attempt navigation
+                console.log('Calling navigation.navigate with:', screenName);
+                navigation.navigate(screenName as never);
+                console.log('Navigation call completed');
+              } catch (error: any) {
+                console.error('❌ Error navigating to Dynamic Island:', error);
+                Alert.alert(
+                  'Navigation Error',
+                  `Could not open Dynamic Island settings.\n\nError: ${error?.message || String(error)}`,
+                  [{text: 'OK'}],
+                );
+              }
+            },
+            color: '#06b6d4',
+          },
+        ]
+      : []),
+  ], [navigation, subscriptionStatus]);
 
   const getInitials = (name?: string) => {
     if (!name) return '?';

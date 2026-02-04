@@ -11,6 +11,13 @@ export const APP_CONFIG = {
   BUILD_NUMBER: 1,
 } as const;
 
+// ============ TEST MODE FLAGS ============
+// TODO: REMOVE BEFORE PRODUCTION - Set to false before release
+export const TEST_MODE = {
+  // Bypass premium check for Dynamic Island (for testing only)
+  BYPASS_DYNAMIC_ISLAND_PREMIUM: true,
+} as const;
+
 // ============ FIREBASE COLLECTIONS ============
 
 export const FIREBASE_COLLECTIONS = {
@@ -261,6 +268,7 @@ export const PERMISSIONS = {
 
 export default {
   APP_CONFIG,
+  TEST_MODE,
   FIREBASE_COLLECTIONS,
   STORAGE_KEYS,
   API_CONFIG,

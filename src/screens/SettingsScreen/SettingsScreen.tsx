@@ -13,6 +13,7 @@ import {
   PrivacySetting_Icon,
   TermSetting_Icon,
 } from '../../assets/icons/index.jsx';
+import {Platform} from 'react-native';
 import NavigationTile from '../../component/Tiles/NavigationTile.tsx';
 import fonts from '../../assets/fonts/index.js';
 import ScreenConstants from '../../Routes/ScreenConstants';
@@ -37,6 +38,20 @@ const SettingsScreen: React.FC = () => {
           ScreenConstants?.NOTIFICATION_SETTINGS_SCREEN as never,
         ),
     },
+    ...(Platform.OS === 'ios'
+      ? [
+          {
+            id: 'dynamicIsland',
+            Icon: NotificationSetting_Icon,
+            title: 'Dynamic Island',
+            IconnTwo: ArrowRight_Icon,
+            onPress: () =>
+              navigation.navigate(
+                ScreenConstants?.DYNAMIC_ISLAND_SETTINGS_SCREEN as never,
+              ),
+          },
+        ]
+      : []),
     {
       id: 'privacyControls',
       Icon: PrivacySetting_Icon,

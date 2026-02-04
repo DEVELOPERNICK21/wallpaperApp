@@ -17,6 +17,8 @@ import {
   EditProfileScreen,
   ChangePasswordScreen,
   NotificationSettingsScreen,
+  DynamicIslandSettingsScreen,
+  PetScreen,
   PrivacySecurityScreen,
   PrivacyPolicyScreen,
   SubscriptionScreen,
@@ -102,6 +104,16 @@ const AppRoutes = () => {
       <Stack.Screen
         name={ScreenConstants?.NOTIFICATION_SETTINGS_SCREEN}
         component={NotificationSettingsScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.DYNAMIC_ISLAND_SETTINGS_SCREEN}
+        component={DynamicIslandSettingsScreen}
+        options={{headerShown: false, title: ''}}
+      />
+      <Stack.Screen
+        name={ScreenConstants?.PET_SCREEN}
+        component={PetScreen}
         options={{headerShown: false, title: ''}}
       />
       <Stack.Screen

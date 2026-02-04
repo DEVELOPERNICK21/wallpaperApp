@@ -26,7 +26,6 @@ import {
 } from 'react-native-gesture-handler';
 import RNFS from 'react-native-fs';
 import {CameraRoll} from '@react-native-camera-roll/camera-roll';
-import YearCalendar from '../../component/YearCalendar/YearCalendar';
 import {
   setHomeWallpaper,
   setLockWallpaper,
@@ -38,7 +37,11 @@ import WallHavenService, {
   WallHavenSearchParams,
 } from '../../services/WallHavenService';
 import {useDispatch} from 'react-redux';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import {requestChatAccess} from '../../redux/actions/appState';
+import DynamicIslandSettingsContent from '../../component/DynamicIslandSettingsContent/DynamicIslandSettingsContent';
+import {getAndClearPendingNavigateToPet} from '../../utils/deepLinkPet';
+import ScreenConstants from '../../Routes/ScreenConstants';
 
 const {width, height} = Dimensions.get('window');
 
@@ -50,10 +53,20 @@ interface Wallpaper {
   thumbnail?: string; // For grid display
 }
 
-const categories = ['Year Calendar', 'All', 'General', 'Anime', 'People'];
+const categories = ['Year Calculator', 'All', 'General', 'Anime', 'People'];
 
 const WallpaperScreen = () => {
   const dispatch = useDispatch();
+  const navigation = useNavigation();
+
+  // Deep link from Dynamic Island (wallpe://pet): navigate to Pet screen when stack is ready or when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (getAndClearPendingNavigateToPet()) {
+        navigation.navigate(ScreenConstants.PET_SCREEN as never);
+      }
+    }, [navigation]),
+  );
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [selectedWallpaper, setSelectedWallpaper] = useState<string | null>(
     null,
@@ -69,7 +82,6 @@ const WallpaperScreen = () => {
   const [downloading, setDownloading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applyingProgress, setApplyingProgress] = useState<string>('');
-  const [showCalendarFullScreen, setShowCalendarFullScreen] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [imageErrors, setImageErrors] = useState<{[key: string]: boolean}>({});
@@ -190,9 +202,12 @@ const WallpaperScreen = () => {
     fetchWallpapers(1, true);
   }, []);
 
-  // Reload when category changes
+  // Reload when category changes (skip for Year Calculator - no wallpapers)
   useEffect(() => {
     setSearchQuery(''); // Reset search when category changes
+    if (selectedCategory === 'Year Calculator') {
+      return;
+    }
     fetchWallpapers(1, true);
   }, [selectedCategory]);
 
@@ -591,8 +606,8 @@ const WallpaperScreen = () => {
   };
 
   const filteredWallpapers =
-    selectedCategory === 'Year Calendar'
-      ? [] // Show calendar instead
+    selectedCategory === 'Year Calculator'
+      ? [] // Show Year Calculator content instead
       : wallpapers; // Already filtered by API based on category
 
   const renderWallpaperItem = ({item}: {item: Wallpaper; index: number}) => {
@@ -747,25 +762,27 @@ const WallpaperScreen = () => {
                 Choose your perfect background
               </Text>
             </Pressable>
-            {Platform.OS === 'android' && __DEV__ && (
-              <TouchableOpacity
-                style={styles.debugButton}
-                onPress={() => {
-                  Alert.alert(
-                    'Diagnostic Test',
-                    'Test wallpaper with static image?\n\nPlace test.jpg in /sdcard/Download/ first.',
-                    [
-                      {text: 'Cancel', style: 'cancel'},
-                      {
-                        text: 'Run Test',
-                        onPress: () => testWithStaticImage(),
-                      },
-                    ],
-                  );
-                }}>
-                <Text style={styles.debugButtonText}>🧪</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.headerActions}>
+              {Platform.OS === 'android' && __DEV__ && (
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Diagnostic Test',
+                      'Test wallpaper with static image?\n\nPlace test.jpg in /sdcard/Download/ first.',
+                      [
+                        {text: 'Cancel', style: 'cancel'},
+                        {
+                          text: 'Run Test',
+                          onPress: () => testWithStaticImage(),
+                        },
+                      ],
+                    );
+                  }}>
+                  <Text style={styles.debugButtonText}>🧪</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </Animated.View>
 
@@ -792,19 +809,12 @@ const WallpaperScreen = () => {
           </ScrollView>
         </View>
 
-        {selectedCategory === 'Year Calendar' ? (
-          <View style={styles.calendarWrapper}>
-            <TouchableOpacity
-              style={styles.fullScreenCalendarButton}
-              onPress={() => setShowCalendarFullScreen(true)}>
-              <Text style={styles.fullScreenCalendarButtonText}>
-                Open Full Screen Calendar
-              </Text>
-            </TouchableOpacity>
+        {selectedCategory === 'Year Calculator' ? (
+          <View style={styles.yearCalculatorWrapper}>
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.calendarContainer}>
-              <YearCalendar />
+              contentContainerStyle={styles.yearCalculatorContainer}>
+              <DynamicIslandSettingsContent darkTheme />
             </ScrollView>
           </View>
         ) : (
@@ -1185,20 +1195,6 @@ const WallpaperScreen = () => {
           </Animated.View>
         )}
 
-        {/* Full Screen Calendar Modal */}
-        <Modal
-          visible={showCalendarFullScreen}
-          animationType="slide"
-          transparent={false}
-          onRequestClose={() => setShowCalendarFullScreen(false)}>
-          <View style={styles.fullScreenModal}>
-            <YearCalendar
-              fullScreen={true}
-              onClose={() => setShowCalendarFullScreen(false)}
-            />
-          </View>
-        </Modal>
-
         {/* Selected Wallpaper Preview */}
         {selectedWallpaper && (
           <Animated.View
@@ -1267,6 +1263,28 @@ const styles = StyleSheet.create({
   headerTitleTouchable: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dynamicIslandButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#06b6d4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+    shadowColor: '#06b6d4',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dynamicIslandButtonText: {
+    fontSize: 18,
+  },
   debugButton: {
     width: 36,
     height: 36,
@@ -1314,28 +1332,11 @@ const styles = StyleSheet.create({
   calendarWrapper: {
     flex: 1,
   },
-  fullScreenCalendarButton: {
-    margin: 15,
-    marginBottom: 10,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#6366f1',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  fullScreenCalendarButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  fullScreenModal: {
+  yearCalculatorWrapper: {
     flex: 1,
-    backgroundColor: '#0f172a',
+  },
+  yearCalculatorContainer: {
+    paddingBottom: 100,
   },
   wallpaperItem: {
     flex: 1,

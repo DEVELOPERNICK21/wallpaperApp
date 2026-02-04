@@ -2,6 +2,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import React, {useEffect, useState, useRef} from 'react';
 import {
   AppState,
+  Linking,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
@@ -13,6 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import WallpaperStack from './WallpaperStack';
 import {PasswordScreen, SplashScreen} from '../screens';
 import {resetChatAccessRequest} from '../redux/actions/appState';
+import {LiveActivityService} from '../services/LiveActivityService';
+import {setPendingNavigateToPet} from '../utils/deepLinkPet';
 
 const LOCK_TIMEOUT = 3 * 60 * 1000; // 2 minutes
 
@@ -34,6 +37,35 @@ const Index = () => {
 
   useEffect(() => {
     resetPasswordScreenOnLaunch();
+  }, []);
+
+  // Deep link: wallpe://pet and wallpe://pet?action=feed|play|rest (from Dynamic Island)
+  useEffect(() => {
+    const handleUrl = async (url: string | null) => {
+      if (!url || !url.startsWith('wallpe://pet')) return;
+      try {
+        const parsed = new URL(url);
+        const action = parsed.searchParams.get('action');
+        if (LiveActivityService.isSupported()) {
+          if (action === 'feed') await LiveActivityService.feedPet();
+          else if (action === 'play') await LiveActivityService.playWithPet();
+          else if (action === 'rest') await LiveActivityService.restPet();
+        }
+        setScreenToShow('wallpaper');
+        setShowPasswordScreen(false);
+        // Only navigate to Pet screen when opening pet (no action). Feed/Play/Rest run in place and stay on wallpaper.
+        if (!action || (action !== 'feed' && action !== 'play' && action !== 'rest')) {
+          setPendingNavigateToPet(true);
+        }
+      } catch (_) {
+        setScreenToShow('wallpaper');
+        setShowPasswordScreen(false);
+        setPendingNavigateToPet(true);
+      }
+    };
+    Linking.getInitialURL().then(handleUrl);
+    const sub = Linking.addEventListener('url', ({url}) => handleUrl(url));
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -102,6 +134,12 @@ const Index = () => {
         // Skip password check if in wallpaper mode
         if (screenToShow !== 'wallpaper') {
           checkInactivity();
+        }
+        // Update Dynamic Island / Live Activity when app comes to foreground
+        if (LiveActivityService.isSupported()) {
+          LiveActivityService.isLiveActivityEnabled().then(enabled => {
+            if (enabled) LiveActivityService.updateLiveActivity();
+          });
         }
       }
       setAppState(nextAppState);

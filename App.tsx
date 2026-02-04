@@ -63,13 +63,7 @@ const App = () => {
         }
 
         setLockTimeout(timeout);
-        console.log('🔒 Screen lock settings loaded:', {
-          enabled: screenLock === 'true',
-          timer: lockTimer,
-          timeout: timeout / 1000 + 's',
-          timeoutMs: timeout,
-          raw: {screenLock, lockTimer},
-        });
+        // Screen lock settings loaded
       } catch (error) {
         console.error('Error loading lock settings:', error);
       }
@@ -88,20 +82,12 @@ const App = () => {
 
     // Don't start timer if screen lock is disabled or timeout is 0 (immediate)
     if (!screenLockEnabled || lockTimeout === 0) {
-      console.log('⏱️ Timer not started (disabled or immediate mode)');
+      // Timer disabled or immediate mode
       return;
     }
 
     const startTime = Date.now();
-    console.log(
-      '⏱️ Starting inactivity timer:',
-      lockTimeout / 1000 + 's',
-      '(' + lockTimeout + 'ms)',
-      'Lock enabled:',
-      screenLockEnabled,
-      'Start time:',
-      new Date(startTime).toLocaleTimeString(),
-    );
+    // Starting inactivity timer
 
     // Start new timer
     inactivityTimerRef.current = setTimeout(() => {
@@ -109,27 +95,8 @@ const App = () => {
       const actualWaitTime = now - startTime;
       const inactiveDuration = now - lastActivityRef.current;
 
-      console.log(
-        '⏰ Inactivity timer fired!',
-        '\n   Expected timeout:',
-        lockTimeout / 1000 + 's (' + lockTimeout + 'ms)',
-        '\n   Actual wait time:',
-        actualWaitTime / 1000 + 's (' + actualWaitTime + 'ms)',
-        '\n   Inactive duration:',
-        inactiveDuration / 1000 + 's (' + inactiveDuration + 'ms)',
-        '\n   Fire time:',
-        new Date(now).toLocaleTimeString(),
-      );
-
       if (inactiveDuration >= lockTimeout && screenLockEnabled) {
-        console.log('🔒 Locking app due to inactivity');
         setIsLocked(true);
-      } else {
-        console.log('⚠️ Not locking - conditions not met:', {
-          inactiveDuration: inactiveDuration / 1000 + 's',
-          lockTimeout: lockTimeout / 1000 + 's',
-          screenLockEnabled,
-        });
       }
     }, lockTimeout);
   }, [screenLockEnabled, lockTimeout]);
@@ -138,11 +105,7 @@ const App = () => {
   const resetActivityTimer = useCallback(() => {
     const now = Date.now();
     const timeSinceLastActivity = now - lastActivityRef.current;
-    console.log(
-      '👆 User activity detected, resetting timer',
-      '(was inactive for',
-      timeSinceLastActivity / 1000 + 's)',
-    );
+    // User activity detected, resetting timer
     lastActivityRef.current = now;
     startInactivityTimer();
   }, [startInactivityTimer]);
@@ -150,21 +113,14 @@ const App = () => {
   // Handle AppState changes (background/foreground)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      console.log('📱 AppState changed:', appState.current, '->', nextAppState);
-
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
         // App came to foreground
         const inactiveDuration = Date.now() - lastActivityRef.current;
-        console.log(
-          '📱 App came to foreground. Was inactive for:',
-          inactiveDuration / 1000 + 's',
-        );
 
         if (screenLockEnabled && inactiveDuration >= lockTimeout) {
-          console.log('🔒 Locking app due to background inactivity');
           setIsLocked(true);
         } else {
           // Reset timer when app comes to foreground
@@ -172,7 +128,6 @@ const App = () => {
         }
       } else if (nextAppState.match(/inactive|background/)) {
         // App went to background
-        console.log('📱 App went to background');
         lastActivityRef.current = Date.now();
 
         // Clear timer when app goes to background
@@ -192,27 +147,12 @@ const App = () => {
 
   // Start inactivity timer when settings change or app is ready
   useEffect(() => {
-    console.log('🔄 Timer effect triggered:', {
-      screenLockEnabled,
-      isLoading,
-      isLocked,
-      lockTimeout: lockTimeout / 1000 + 's',
-    });
-
     if (screenLockEnabled && !isLoading && !isLocked) {
-      console.log('✅ Starting inactivity timer now');
       startInactivityTimer();
-    } else {
-      console.log('❌ Not starting timer:', {
-        screenLockEnabled,
-        isLoading,
-        isLocked,
-      });
     }
 
     return () => {
       if (inactivityTimerRef.current) {
-        console.log('🧹 Cleaning up timer');
         clearTimeout(inactivityTimerRef.current);
       }
     };
@@ -246,7 +186,6 @@ const App = () => {
   // Initialize presence tracking when app is ready
   useEffect(() => {
     if (!isLoading) {
-      console.log('🚀 App ready, initializing presence tracking');
       presenceTracker.initialize();
     }
 
@@ -258,7 +197,6 @@ const App = () => {
 
   // Handle unlock
   const handleUnlock = () => {
-    console.log('🔓 App unlocked');
     setIsLocked(false);
     resetActivityTimer();
   };

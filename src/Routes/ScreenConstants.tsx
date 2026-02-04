@@ -34,6 +34,8 @@ type ScreenConstantsType = {
   PRIVACY_SECURITY_SCREEN: string;
   PRIVACY_POLICY_SCREEN: string;
   SUBSCRIPTION_SCREEN: string;
+  DYNAMIC_ISLAND_SETTINGS_SCREEN: string;
+  PET_SCREEN: string;
   // add other screen constants as needed...
 };
 
@@ -72,6 +74,8 @@ const ScreenConstants: ScreenConstantsType = {
   PRIVACY_SECURITY_SCREEN: 'PRIVACY_SECURITY_SCREEN',
   PRIVACY_POLICY_SCREEN: 'PRIVACY_POLICY_SCREEN',
   SUBSCRIPTION_SCREEN: 'SUBSCRIPTION_SCREEN',
+  DYNAMIC_ISLAND_SETTINGS_SCREEN: 'DYNAMIC_ISLAND_SETTINGS_SCREEN',
+  PET_SCREEN: 'PET_SCREEN',
 };
 
 export default ScreenConstants;

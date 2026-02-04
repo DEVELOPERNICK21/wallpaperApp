@@ -21,12 +21,8 @@ import * as WallpaperService from '../../services/WallpaperBackgroundService';
 import {
   setHomeWallpaper,
   isWallpaperSupported,
+  saveYearWallpaperForShortcuts,
 } from '../../utils/WallpaperManager';
-import {
-  openLiveWallpaperSettings,
-  isLiveWallpaperSupported,
-} from '../../utils/LiveWallpaperManager';
-
 // Optional: react-native-view-shot for image capture
 // Install with: npm install react-native-view-shot
 let ViewShot: any = null;
@@ -701,6 +697,27 @@ const YearCalendar: React.FC<YearCalendarProps> = ({
     }
   };
 
+  // Save current calendar image to Documents for iOS Shortcuts (Files app)
+  const saveYearWallpaperForShortcutsAction = useCallback(async () => {
+    if (Platform.OS !== 'ios') return;
+    const uri = await captureCalendar();
+    if (!uri) return;
+    const saved = await saveYearWallpaperForShortcuts(uri);
+    if (saved) {
+      Alert.alert(
+        'Saved for Shortcuts',
+        'The year wallpaper is saved in Files → On My iPhone → wallpe as "YearProgressWallpaper.jpg".\n\nTo automate:\n1. Open Shortcuts\n2. Automation → + → Time of Day (e.g. 12:00 AM)\n3. Add "Get File" → choose that file\n4. Add "Set Wallpaper" → Lock Screen',
+        [{text: 'OK'}],
+      );
+    } else {
+      Alert.alert(
+        'Could Not Save',
+        'Saving the file for Shortcuts failed. Try again.',
+        [{text: 'OK'}],
+      );
+    }
+  }, [captureCalendar]);
+
   // Save auto-update preferences
   const saveAutoUpdatePreferences = async (
     enabled: boolean,
@@ -783,280 +800,467 @@ const YearCalendar: React.FC<YearCalendarProps> = ({
         fullScreen ? styles.fullScreenContainer : styles.container,
         {backgroundColor: currentTheme.background},
       ]}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.title}>Year Calendar</Text>
-            <Text style={styles.subtitle}>
-              Track the current year's progress
+      {fullScreen ? (
+        <ScrollView
+          style={styles.fullScreenScroll}
+          contentContainerStyle={styles.fullScreenOuterScrollContent}
+          showsVerticalScrollIndicator={true}>
+          <View style={[styles.header, fullScreen && styles.headerCompact]}>
+            <View style={styles.headerTop}>
+              <View>
+                <Text style={[styles.title, fullScreen && styles.titleCompact]}>
+                  Year Calendar
+                </Text>
+                <Text
+                  style={[styles.subtitle, fullScreen && styles.subtitleCompact]}>
+                  Track the current year's progress
+                </Text>
+              </View>
+              {onClose && (
+                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.themeSelectorContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.themeScrollContent}>
+                {Object.entries(colorThemes).map(([key, theme]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.themeOption,
+                      fullScreen && styles.themeOptionCompact,
+                      selectedTheme === key && styles.selectedTheme,
+                      {borderColor: theme.accent},
+                    ]}
+                    onPress={() =>
+                      setSelectedTheme(key as keyof typeof colorThemes)
+                    }>
+                    <View
+                      style={[
+                        styles.themeColorPreview,
+                        fullScreen && styles.themeColorPreviewCompact,
+                        {backgroundColor: theme.passed},
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.themeName,
+                        fullScreen && styles.themeNameCompact,
+                        selectedTheme === key && styles.selectedThemeName,
+                      ]}>
+                      {theme.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.calendarContainer,
+              fullScreen && styles.fullScreenCalendarContainer,
+            ]}>
+            <View style={styles.dotsGrid}>{renderDots(fullScreen)}</View>
+          </View>
+
+          {selectedDay !== null && (
+            <Animated.View
+              style={[
+                styles.selectedDayInfo,
+                fullScreen && styles.selectedDayInfoCompact,
+                {
+                  opacity: fadeAnim,
+                  transform: [
+                    {
+                      translateY: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-10, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.selectedDayTitle,
+                  fullScreen && styles.selectedDayTitleCompact,
+                ]}>
+                {formatDate(getDateForDay(selectedDay))}
+              </Text>
+              <Text
+                style={[
+                  styles.selectedDaySubtitle,
+                  fullScreen && styles.selectedDaySubtitleCompact,
+                ]}>
+                Day {selectedDay + 1} of {totalDays}
+              </Text>
+            </Animated.View>
+          )}
+
+          <View
+            style={[
+              styles.statsContainer,
+              fullScreen && styles.statsContainerCompact,
+            ]}>
+            <View style={styles.statItem}>
+              <Text
+                style={[
+                  styles.statValue,
+                  fullScreen && styles.statValueCompact,
+                  {color: currentTheme.accent},
+                ]}>
+                {percentageComplete}%
+              </Text>
+              <Text
+                style={[
+                  styles.statLabel,
+                  fullScreen && styles.statLabelCompact,
+                ]}>
+                Complete
+              </Text>
+            </View>
+            <View style={[styles.statDivider, fullScreen && styles.statDividerCompact]} />
+            <View style={styles.statItem}>
+              <Text
+                style={[
+                  styles.statValue,
+                  fullScreen && styles.statValueCompact,
+                  {color: currentTheme.passed},
+                ]}>
+                {daysPassed}
+              </Text>
+              <Text
+                style={[
+                  styles.statLabel,
+                  fullScreen && styles.statLabelCompact,
+                ]}>
+                Days Passed
+              </Text>
+            </View>
+            <View style={[styles.statDivider, fullScreen && styles.statDividerCompact]} />
+            <View style={styles.statItem}>
+              <Text
+                style={[
+                  styles.statValue,
+                  fullScreen && styles.statValueCompact,
+                  {color: currentTheme.future},
+                ]}>
+                {daysRemaining}
+              </Text>
+              <Text
+                style={[
+                  styles.statLabel,
+                  fullScreen && styles.statLabelCompact,
+                ]}>
+                Days Left
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.footer, fullScreen && styles.footerCompact]}>
+            <Text
+              style={[
+                styles.footerText,
+                fullScreen && styles.footerTextCompact,
+                {color: currentTheme.accent},
+              ]}>
+              {daysRemaining}d left · {percentageComplete}%
             </Text>
           </View>
-          {fullScreen && onClose && (
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
 
-        {/* Theme Selector */}
-        <View style={styles.themeSelectorContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.themeScrollContent}>
-            {Object.entries(colorThemes).map(([key, theme]) => (
-              <TouchableOpacity
-                key={key}
-                style={[
-                  styles.themeOption,
-                  selectedTheme === key && styles.selectedTheme,
-                  {borderColor: theme.accent},
-                ]}
-                onPress={() =>
-                  setSelectedTheme(key as keyof typeof colorThemes)
-                }>
-                <View
-                  style={[
-                    styles.themeColorPreview,
-                    {backgroundColor: theme.passed},
-                  ]}
-                />
+          {/* Full screen: auto-update + wallpaper actions inside scroll */}
+          <View style={[styles.autoUpdateContainer, fullScreen && styles.autoUpdateContainerCompact]}>
+            <View style={styles.autoUpdateHeader}>
+              <View style={styles.autoUpdateTitleContainer}>
                 <Text
                   style={[
-                    styles.themeName,
-                    selectedTheme === key && styles.selectedThemeName,
+                    styles.autoUpdateTitle,
+                    fullScreen && styles.autoUpdateTitleCompact,
                   ]}>
-                  {theme.name}
+                  🔄 Daily Auto-Update
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
+                <Text
+                  style={[
+                    styles.autoUpdateSubtitle,
+                    fullScreen && styles.autoUpdateSubtitleCompact,
+                  ]}>
+                  {Platform.OS === 'android'
+                    ? 'Updates when app opens (requires background task setup)'
+                    : '⚠️ iOS: Manual update only (Apple restriction)'}
+                </Text>
+              </View>
+              {Platform.OS === 'android' && (
+                <Switch
+                  value={autoUpdateEnabled}
+                  onValueChange={value =>
+                    saveAutoUpdatePreferences(value, autoUpdateType)
+                  }
+                  trackColor={{false: '#334155', true: currentTheme.accent}}
+                  thumbColor={autoUpdateEnabled ? '#ffffff' : '#94a3b8'}
+                />
+              )}
+            </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          fullScreen && styles.fullScreenScrollContent,
-        ]}
-        style={fullScreen && {height: height * 0.6}}>
-        <View
-          style={[
-            styles.calendarContainer,
-            fullScreen && styles.fullScreenCalendarContainer,
-          ]}>
-          <View style={styles.dotsGrid}>{renderDots(fullScreen)}</View>
-        </View>
+            {Platform.OS === 'android' && autoUpdateEnabled && (
+              <>
+                <View style={styles.autoUpdateOptions}>
+                  <Text
+                    style={[
+                      styles.autoUpdateOptionsTitle,
+                      fullScreen && styles.autoUpdateOptionsTitleCompact,
+                    ]}>
+                    Update:
+                  </Text>
+                  <View style={styles.autoUpdateButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.autoUpdateButton,
+                        autoUpdateType === 'home' && styles.autoUpdateButtonActive,
+                        autoUpdateType === 'home' && {
+                          backgroundColor: currentTheme.accent,
+                        },
+                      ]}
+                      onPress={() => saveAutoUpdatePreferences(true, 'home')}>
+                      <Text
+                        style={[
+                          styles.autoUpdateButtonText,
+                          autoUpdateType === 'home' &&
+                            styles.autoUpdateButtonTextActive,
+                        ]}>
+                        Home
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.autoUpdateButton,
+                        autoUpdateType === 'lock' && styles.autoUpdateButtonActive,
+                        autoUpdateType === 'lock' && {
+                          backgroundColor: currentTheme.accent,
+                        },
+                      ]}
+                      onPress={() => saveAutoUpdatePreferences(true, 'lock')}>
+                      <Text
+                        style={[
+                          styles.autoUpdateButtonText,
+                          autoUpdateType === 'lock' &&
+                            styles.autoUpdateButtonTextActive,
+                        ]}>
+                        Lock
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.autoUpdateButton,
+                        autoUpdateType === 'both' && styles.autoUpdateButtonActive,
+                        autoUpdateType === 'both' && {
+                          backgroundColor: currentTheme.accent,
+                        },
+                      ]}
+                      onPress={() => saveAutoUpdatePreferences(true, 'both')}>
+                      <Text
+                        style={[
+                          styles.autoUpdateButtonText,
+                          autoUpdateType === 'both' &&
+                            styles.autoUpdateButtonTextActive,
+                        ]}>
+                        Both
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={styles.autoUpdateWarning}>
+                  <Text
+                    style={[
+                      styles.autoUpdateWarningText,
+                      fullScreen && styles.autoUpdateWarningTextCompact,
+                    ]}>
+                    ⚠️ Note: Wallpaper updates when app opens.
+                  </Text>
+                </View>
+              </>
+            )}
 
-        {selectedDay !== null && (
-          <Animated.View
-            style={[
-              styles.selectedDayInfo,
-              {
-                opacity: fadeAnim,
-                transform: [
-                  {
-                    translateY: fadeAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-10, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}>
-            <Text style={styles.selectedDayTitle}>
-              {formatDate(getDateForDay(selectedDay))}
-            </Text>
-            <Text style={styles.selectedDaySubtitle}>
-              Day {selectedDay + 1} of {totalDays}
-            </Text>
-          </Animated.View>
-        )}
-      </ScrollView>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, {color: currentTheme.accent}]}>
-            {percentageComplete}%
-          </Text>
-          <Text style={styles.statLabel}>Complete</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, {color: currentTheme.passed}]}>
-            {daysPassed}
-          </Text>
-          <Text style={styles.statLabel}>Days Passed</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, {color: currentTheme.future}]}>
-            {daysRemaining}
-          </Text>
-          <Text style={styles.statLabel}>Days Left</Text>
-        </View>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={[styles.footerText, {color: currentTheme.accent}]}>
-          {daysRemaining}d left · {percentageComplete}%
-        </Text>
-      </View>
-
-      {/* Auto-Update Settings */}
-      <View style={styles.autoUpdateContainer}>
-        <View style={styles.autoUpdateHeader}>
-          <View style={styles.autoUpdateTitleContainer}>
-            <Text style={styles.autoUpdateTitle}>🔄 Daily Auto-Update</Text>
-            {Platform.OS === 'android' ? (
-              <Text style={styles.autoUpdateSubtitle}>
-                Updates when app opens (requires background task setup)
-              </Text>
-            ) : (
-              <Text style={styles.autoUpdateSubtitle}>
-                ⚠️ iOS: Manual update only (Apple restriction)
-              </Text>
+            {Platform.OS === 'ios' && (
+              <>
+                <View style={styles.autoUpdateIOSInfo}>
+                  <Text
+                    style={[
+                      styles.autoUpdateIOSInfoText,
+                      fullScreen && styles.autoUpdateIOSInfoTextCompact,
+                    ]}>
+                    Use "Save for Shortcuts" below for lock screen automation.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.shortcutsButton,
+                    fullScreen && styles.shortcutsButtonCompact,
+                    {backgroundColor: currentTheme.accent},
+                  ]}
+                  onPress={saveYearWallpaperForShortcutsAction}
+                  disabled={isCapturing}>
+                  <Text
+                    style={[
+                      styles.shortcutsButtonText,
+                      fullScreen && styles.shortcutsButtonTextCompact,
+                    ]}>
+                    {isCapturing ? 'Saving...' : '⏰ Save for Shortcuts'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.shortcutsButtonSubtext,
+                      fullScreen && styles.shortcutsButtonSubtextCompact,
+                    ]}>
+                    Files → On My iPhone → wallpe
+                  </Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
-          {Platform.OS === 'android' && (
-            <Switch
-              value={autoUpdateEnabled}
-              onValueChange={value =>
-                saveAutoUpdatePreferences(value, autoUpdateType)
-              }
-              trackColor={{false: '#334155', true: currentTheme.accent}}
-              thumbColor={autoUpdateEnabled ? '#ffffff' : '#94a3b8'}
-            />
-          )}
-        </View>
 
-        {Platform.OS === 'android' && autoUpdateEnabled && (
-          <>
-            <View style={styles.autoUpdateOptions}>
-              <Text style={styles.autoUpdateOptionsTitle}>Update:</Text>
-              <View style={styles.autoUpdateButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.autoUpdateButton,
-                    autoUpdateType === 'home' && styles.autoUpdateButtonActive,
-                    autoUpdateType === 'home' && {
-                      backgroundColor: currentTheme.accent,
-                    },
-                  ]}
-                  onPress={() => saveAutoUpdatePreferences(true, 'home')}>
-                  <Text
-                    style={[
-                      styles.autoUpdateButtonText,
-                      autoUpdateType === 'home' &&
-                        styles.autoUpdateButtonTextActive,
-                    ]}>
-                    Home
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.autoUpdateButton,
-                    autoUpdateType === 'lock' && styles.autoUpdateButtonActive,
-                    autoUpdateType === 'lock' && {
-                      backgroundColor: currentTheme.accent,
-                    },
-                  ]}
-                  onPress={() => saveAutoUpdatePreferences(true, 'lock')}>
-                  <Text
-                    style={[
-                      styles.autoUpdateButtonText,
-                      autoUpdateType === 'lock' &&
-                        styles.autoUpdateButtonTextActive,
-                    ]}>
-                    Lock
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.autoUpdateButton,
-                    autoUpdateType === 'both' && styles.autoUpdateButtonActive,
-                    autoUpdateType === 'both' && {
-                      backgroundColor: currentTheme.accent,
-                    },
-                  ]}
-                  onPress={() => saveAutoUpdatePreferences(true, 'both')}>
-                  <Text
-                    style={[
-                      styles.autoUpdateButtonText,
-                      autoUpdateType === 'both' &&
-                        styles.autoUpdateButtonTextActive,
-                    ]}>
-                    Both
-                  </Text>
-                </TouchableOpacity>
+          <View style={[styles.actionButtons, fullScreen && styles.actionButtonsCompact]}>
+            <TouchableOpacity
+              style={[
+                styles.setWallpaperButton,
+                fullScreen && styles.setWallpaperButtonCompact,
+                {backgroundColor: currentTheme.accent},
+              ]}
+              onPress={showWallpaperPreviewModal}
+              disabled={isCapturing}>
+              <Text
+                style={[
+                  styles.setWallpaperButtonText,
+                  fullScreen && styles.setWallpaperButtonTextCompact,
+                ]}>
+                {isCapturing
+                  ? 'Capturing...'
+                  : Platform.OS === 'android'
+                  ? '📱 Set as Wallpaper'
+                  : '💾 Save to Gallery'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      ) : (
+        <>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <View>
+                <Text style={styles.title}>Year Calendar</Text>
+                <Text style={styles.subtitle}>
+                  Track the current year's progress
+                </Text>
               </View>
             </View>
-            <View style={styles.autoUpdateWarning}>
-              <Text style={styles.autoUpdateWarningText}>
-                ⚠️ Note: Wallpaper updates when app opens. For true daily
-                auto-update, install react-native-background-fetch and configure
-                background tasks.
-              </Text>
+            <View style={styles.themeSelectorContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.themeScrollContent}>
+                {Object.entries(colorThemes).map(([key, theme]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.themeOption,
+                      selectedTheme === key && styles.selectedTheme,
+                      {borderColor: theme.accent},
+                    ]}
+                    onPress={() =>
+                      setSelectedTheme(key as keyof typeof colorThemes)
+                    }>
+                    <View
+                      style={[
+                        styles.themeColorPreview,
+                        {backgroundColor: theme.passed},
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.themeName,
+                        selectedTheme === key && styles.selectedThemeName,
+                      ]}>
+                      {theme.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-          </>
-        )}
+          </View>
 
-        {Platform.OS === 'ios' && (
-          <View style={styles.autoUpdateIOSInfo}>
-            <Text style={styles.autoUpdateIOSInfoText}>
-              iOS does not allow automatic wallpaper changes. Please manually
-              update your wallpaper daily using the "Set as Wallpaper" button.
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            style={undefined}>
+            <View style={styles.calendarContainer}>
+              <View style={styles.dotsGrid}>{renderDots(fullScreen)}</View>
+            </View>
+            {selectedDay !== null && (
+              <Animated.View
+                style={[
+                  styles.selectedDayInfo,
+                  {
+                    opacity: fadeAnim,
+                    transform: [
+                      {
+                        translateY: fadeAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-10, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}>
+                <Text style={styles.selectedDayTitle}>
+                  {formatDate(getDateForDay(selectedDay))}
+                </Text>
+                <Text style={styles.selectedDaySubtitle}>
+                  Day {selectedDay + 1} of {totalDays}
+                </Text>
+              </Animated.View>
+            )}
+          </ScrollView>
+
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, {color: currentTheme.accent}]}>
+                {percentageComplete}%
+              </Text>
+              <Text style={styles.statLabel}>Complete</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, {color: currentTheme.passed}]}>
+                {daysPassed}
+              </Text>
+              <Text style={styles.statLabel}>Days Passed</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, {color: currentTheme.future}]}>
+                {daysRemaining}
+              </Text>
+              <Text style={styles.statLabel}>Days Left</Text>
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, {color: currentTheme.accent}]}>
+              {daysRemaining}d left · {percentageComplete}%
             </Text>
           </View>
-        )}
-      </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        {!fullScreen && (
           <TouchableOpacity
-            style={styles.fullScreenButton}
+            style={[styles.fullScreenButton, {backgroundColor: currentTheme.accent}]}
             onPress={() => setShowFullScreen(true)}>
-            <Text style={styles.fullScreenButtonText}>View Full Screen →</Text>
+            <Text style={styles.fullScreenButtonText}>Open full screen</Text>
           </TouchableOpacity>
-        )}
-
-        {Platform.OS === 'android' && isLiveWallpaperSupported() && (
-          <TouchableOpacity
-            style={[
-              styles.liveWallpaperButton,
-              {
-                backgroundColor: currentTheme.accent,
-                borderColor: currentTheme.accent,
-              },
-            ]}
-            onPress={openLiveWallpaperSettings}>
-            <Text style={styles.liveWallpaperButtonText}>
-              ✨ Set as Live Wallpaper
-            </Text>
-            <Text style={styles.liveWallpaperButtonSubtext}>
-              Dynamic updates • No manual refresh needed
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={[
-            styles.setWallpaperButton,
-            {backgroundColor: currentTheme.accent},
-          ]}
-          onPress={showWallpaperPreviewModal}
-          disabled={isCapturing}>
-          <Text style={styles.setWallpaperButtonText}>
-            {isCapturing
-              ? 'Capturing...'
-              : Platform.OS === 'android'
-              ? '📱 Set Static Wallpaper'
-              : '💾 Save to Gallery'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        </>
+      )}
     </View>
   );
 
@@ -1168,6 +1372,117 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
     paddingTop: 20,
   },
+  fullScreenScroll: {
+    flex: 1,
+  },
+  fullScreenOuterScrollContent: {
+    paddingBottom: 40,
+    paddingHorizontal: 16,
+  },
+  headerCompact: {
+    marginBottom: 12,
+  },
+  titleCompact: {
+    fontSize: 22,
+    marginBottom: 4,
+  },
+  subtitleCompact: {
+    fontSize: 13,
+  },
+  themeOptionCompact: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 6,
+  },
+  themeColorPreviewCompact: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  themeNameCompact: {
+    fontSize: 11,
+  },
+  selectedDayInfoCompact: {
+    padding: 12,
+    marginTop: 12,
+    marginHorizontal: 16,
+  },
+  selectedDayTitleCompact: {
+    fontSize: 15,
+    marginBottom: 4,
+  },
+  selectedDaySubtitleCompact: {
+    fontSize: 12,
+  },
+  statsContainerCompact: {
+    paddingVertical: 12,
+    marginTop: 10,
+    paddingHorizontal: 16,
+  },
+  statValueCompact: {
+    fontSize: 22,
+    marginBottom: 4,
+  },
+  statLabelCompact: {
+    fontSize: 10,
+  },
+  statDividerCompact: {
+    height: 36,
+  },
+  footerCompact: {
+    marginTop: 6,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  footerTextCompact: {
+    fontSize: 14,
+  },
+  autoUpdateContainerCompact: {
+    marginTop: 12,
+    padding: 12,
+  },
+  autoUpdateTitleCompact: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  autoUpdateSubtitleCompact: {
+    fontSize: 11,
+  },
+  autoUpdateOptionsTitleCompact: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  autoUpdateWarningTextCompact: {
+    fontSize: 11,
+  },
+  autoUpdateIOSInfoTextCompact: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  shortcutsButtonCompact: {
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  shortcutsButtonTextCompact: {
+    fontSize: 14,
+  },
+  shortcutsButtonSubtextCompact: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  actionButtonsCompact: {
+    marginTop: 12,
+    gap: 8,
+  },
+  setWallpaperButtonCompact: {
+    paddingVertical: 12,
+    minHeight: 44,
+  },
+  setWallpaperButtonTextCompact: {
+    fontSize: 14,
+  },
   themeSelectorContainer: {
     marginTop: 12,
     marginBottom: 8,
@@ -1257,9 +1572,9 @@ const styles = StyleSheet.create({
     minHeight: 200,
   },
   fullScreenCalendarContainer: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
-    minHeight: height * 0.65, // Increased to 65% for better visibility
+    marginBottom: 16,
+    paddingHorizontal: 8,
+    minHeight: 220,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1442,6 +1757,25 @@ const styles = StyleSheet.create({
     color: '#93c5fd',
     lineHeight: 16,
   },
+  shortcutsButton: {
+    marginTop: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  shortcutsButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  shortcutsButtonSubtext: {
+    marginTop: 4,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+  },
   actionButtons: {
     marginTop: 15,
     gap: 10,
@@ -1460,34 +1794,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
-  },
-  liveWallpaperButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#6366f1',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    minHeight: 64,
-    justifyContent: 'center',
-    borderWidth: 2,
-    marginBottom: 10,
-  },
-  liveWallpaperButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  liveWallpaperButtonSubtext: {
-    color: '#e0e7ff',
-    fontSize: 12,
-    fontWeight: '500',
-    opacity: 0.9,
   },
   setWallpaperButton: {
     paddingVertical: 18,

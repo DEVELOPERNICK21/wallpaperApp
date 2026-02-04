@@ -339,3 +339,37 @@ export const isWallpaperSupported = (): boolean => {
 
   return supported;
 };
+
+/** Fixed filename for iOS Shortcuts automation (visible in Files app) */
+export const YEAR_WALLPAPER_SHORTCUTS_FILENAME = 'YearProgressWallpaper.jpg';
+
+/**
+ * Save the year calendar image to app Documents so iOS Shortcuts can use it
+ * (e.g. "At 12:00 AM → Get File → Set Lock Screen Wallpaper").
+ * Only has effect on iOS when Documents are file-shared (UIFileSharingEnabled).
+ *
+ * @param sourceUri - File URI of the captured image (e.g. from ViewShot)
+ * @returns Path to the saved file, or null if failed / not iOS
+ */
+export const saveYearWallpaperForShortcuts = async (
+  sourceUri: string,
+): Promise<string | null> => {
+  if (Platform.OS !== 'ios') {
+    return null;
+  }
+  try {
+    const destPath = `${RNFS.DocumentDirectoryPath}/${YEAR_WALLPAPER_SHORTCUTS_FILENAME}`;
+    const sourcePath = sourceUri.replace(/^file:\/\//, '');
+    const exists = await RNFS.exists(sourcePath);
+    if (!exists) {
+      console.warn('saveYearWallpaperForShortcuts: source file not found', sourcePath);
+      return null;
+    }
+    await RNFS.copyFile(sourcePath, destPath);
+    console.log('Year wallpaper saved for Shortcuts:', destPath);
+    return destPath;
+  } catch (error) {
+    console.error('saveYearWallpaperForShortcuts error:', error);
+    return null;
+  }
+};
